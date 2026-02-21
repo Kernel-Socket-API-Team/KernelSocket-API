@@ -1,0 +1,30 @@
+/build/
+/drivers/windows/packages/
+
+x64/
+x86/
+Debug/
+Release/
+
+# Все временные файлы
+*.obj
+*.pdb
+*.tlog/
+*.log
+*.recipe
+*.ilk
+*.exp
+*.lastbuildstate
+
+# Visual Studio
+.vs/
+*.opensdf
+*.opendb
+*.log
+*.tlog
+
+# User-specific files
+*.user
+*.user.*
+*.suo
+*.sln.docstates
