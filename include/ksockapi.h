@@ -24,9 +24,12 @@ extern "C" {
 
 // Коды возврата
 typedef enum {
-    NET_SUCCESS = 0,
-    NET_ERROR_GENERIC = -1,
-    NET_ERROR_INVALID_PARAM = -2,
+    NET_ERROR_NOT_INITIALIZED = 0,          // Библиотека не инициализирована
+    NET_ERROR_INVALID_VTABLE = -1,          // Некорректная виртуальная таблица
+    
+    NET_SUCCESS = -3,
+    NET_ERROR_GENERIC = -4,
+    NET_ERROR_INVALID_PARAM = -5,
 	/* Количество кодов возрастет в дальнейшем, их необходимость 
 	важно обсудить с разработчиками */
 } net_error_t;
