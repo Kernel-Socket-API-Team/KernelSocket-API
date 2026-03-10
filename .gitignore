@@ -1,6 +1,6 @@
-/build/
-/build-linux/
-/build-windows/
+build/
+build-linux/
+build-windows/
 /drivers/windows/packages/
 
 x64/
