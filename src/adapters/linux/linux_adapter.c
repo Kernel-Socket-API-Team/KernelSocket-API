@@ -1,0 +1,28 @@
+#include "linux_adapter.h"
+
+// Инициализаяция виртуальной таблицы функций
+const net_vtable_dispatcher linux_vtable = {
+    .bind_net_initialize                = linux_net_initialize,
+    .bind_net_cleanup                   = linux_net_cleanup,
+    .bind_net_socket_create             = linux_net_socket_create,
+    .bind_net_socket_close              = linux_net_socket_close,
+    .bind_net_socket_set_options        = linux_net_socket_set_options,
+    .bind_net_socket_get_options        = linux_net_socket_get_options,
+    .bind_net_socket_bind               = linux_net_socket_bind,
+    .bind_net_socket_connect            = linux_net_socket_connect,
+    .bind_net_socket_listen             = linux_net_socket_listen,
+    .bind_net_socket_accept             = linux_net_socket_accept,
+    .bind_net_socket_send               = linux_net_socket_send,
+    .bind_net_socket_send_to            = linux_net_socket_send_to,
+    .bind_net_socket_receive            = linux_net_socket_receive,
+    .bind_net_socket_receive_from       = linux_net_socket_receive_from,
+    .bind_net_address_parse             = linux_net_address_parse,
+    .bind_net_address_to_string         = linux_net_address_to_string,
+    .bind_net_socket_get_local_address  = linux_net_socket_get_local_address,
+    .bind_net_socket_get_remote_address = linux_net_socket_get_remote_address,
+    .bind_net_socket_set_nonblocking    = linux_net_socket_set_nonblocking,
+    .bind_net_socket_can_read           = linux_net_socket_can_read,
+    .bind_net_socket_can_write          = linux_net_socket_can_write,
+    .bind_net_socket_last_error         = linux_net_socket_last_error,
+    .bind_net_error_string              = linux_net_error_string,
+};
