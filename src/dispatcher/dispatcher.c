@@ -1,14 +1,16 @@
 #include "../include/ksockapi.h"
 #include "dispatcher.h"
 
-#ifdef _WIN32
-    #include "../windows/windows_adapter.h"
-#else
-    #include "../linux/linux_adapter.h"
-#endif
+extern const net_vtable_dispatcher windows_vtable;
+extern const net_vtable_dispatcher linux_vtable;
 
 // Инициализация указателя на виртуальную таблицу функций
-const net_vtable_dispatcher* vtable = NULL;
+const net_vtable_dispatcher* vtable =
+#ifdef _WIN32
+    &windows_vtable;
+#else
+    &linux_vtable;
+#endif
 
 // Безопастная маршрутизация интерфейса на платформенное определение
 net_error_t net_initialize(void) {
@@ -29,13 +31,22 @@ net_error_t net_cleanup(void) {
         return vtable->bind_net_cleanup();
 }
 
-net_socket_t* net_socket_create(net_family_t family, net_protocol_t protocol, int flags) {
+net_error_t net_socket_create(net_family_t family, net_protocol_t protocol, int flags, net_socket_t* socket_out) {
     if (!vtable)
         return NET_ERROR_NOT_INITIALIZED;
     else if (!vtable->bind_net_socket_create)
         return NET_ERROR_INVALID_VTABLE;
     else
-        return vtable->bind_net_socket_create(family, protocol, flags);
+        return vtable->bind_net_socket_create(family, protocol, flags, socket_out);
+}
+
+net_error_t net_socket_close(net_socket_t* sock) {
+    if (!vtable)
+        return NET_ERROR_NOT_INITIALIZED;
+    else if (!vtable->bind_net_socket_close)
+        return NET_ERROR_INVALID_VTABLE;
+    else
+        return vtable->bind_net_socket_close(sock);
 }
 
 net_error_t net_socket_set_options(net_socket_t* sock, const net_socket_options_t* opts) {
@@ -83,13 +94,13 @@ net_error_t net_socket_listen(net_socket_t* sock, int backlog) {
         return vtable->bind_net_socket_listen(sock, backlog);
 }
 
-net_socket_t* net_socket_accept(net_socket_t* sock, net_address_t* client_addr) {
+net_error_t net_socket_accept(net_socket_t* sock, net_address_t* client_addr, net_socket_t* socket_listen) {
     if (!vtable)
         return NET_ERROR_NOT_INITIALIZED;
     else if (!vtable->bind_net_socket_accept)
         return NET_ERROR_INVALID_VTABLE;
     else
-        return vtable->bind_net_socket_accept(sock, client_addr);
+        return vtable->bind_net_socket_accept(sock, client_addr, socket_listen);
 }
 
 net_error_t net_socket_send(net_socket_t* sock, const void* data, size_t size, size_t* sent) {
@@ -119,7 +130,7 @@ net_error_t net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_s
         return vtable->bind_net_socket_receive(sock, buffer, buffer_size, received);
 }
 
-net_error_t* net_socket_receive_from(net_socket_t* sock, void* buffer, size_t buffer_size, net_address_t* src_addr, size_t* received) {
+net_error_t net_socket_receive_from(net_socket_t* sock, void* buffer, size_t buffer_size, net_address_t* src_addr, size_t* received) {
     if (!vtable)
         return NET_ERROR_NOT_INITIALIZED;
     else if (!vtable->bind_net_socket_receive_from)
@@ -137,13 +148,13 @@ net_error_t net_address_parse(const char* str, uint16_t default_port, net_addres
         return vtable->bind_net_address_parse(str, default_port, addr);
 }
 
-const char* net_address_to_string(const net_address_t* addr, char* buffer, size_t buffer_size) {
+net_error_t net_address_to_string(const net_address_t* addr, char* buffer, size_t buffer_size, const char* str_out) {
     if (!vtable)
         return NET_ERROR_NOT_INITIALIZED;
     else if (!vtable->bind_net_address_to_string)
         return NET_ERROR_INVALID_VTABLE;
     else
-        return vtable->bind_net_address_to_string(addr, buffer, buffer_size);
+        return vtable->bind_net_address_to_string(addr, buffer, buffer_size, str_out);
 }
 
 net_error_t net_socket_get_local_address(net_socket_t* sock, net_address_t* addr) {
@@ -191,20 +202,20 @@ net_error_t net_socket_can_write(net_socket_t* sock, int timeout_ms, int* can_wr
         return vtable->bind_net_socket_can_write(sock, timeout_ms, can_write);
 }
 
-const char* net_socket_last_error(net_socket_t* sock) {
+net_error_t net_socket_last_error(net_socket_t* sock, const char* str_error) {
     if (!vtable)
         return NET_ERROR_NOT_INITIALIZED;
     else if (!vtable->bind_net_socket_last_error)
         return NET_ERROR_INVALID_VTABLE;
     else
-        return vtable->bind_net_socket_last_error(sock);
+        return vtable->bind_net_socket_last_error(sock, str_error);
 }
 
-const char* net_error_string(net_error_t err) {
+net_error_t net_error_string(net_error_t err, const char* error_description) {
     if (!vtable)
         return NET_ERROR_NOT_INITIALIZED;
     else if (!vtable->bind_net_error_string)
         return NET_ERROR_INVALID_VTABLE;
     else
-        return vtable->bind_net_error_string(err);
+        return vtable->bind_net_error_string(err, error_description);
 }

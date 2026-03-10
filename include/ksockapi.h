@@ -113,9 +113,9 @@ net_error_t net_cleanup(void);
  * family - Семейство протоколов (IPv4/IPv6)
  * protocol - Тип протокола (TCP/UDP)
  * flags - Флаги (NET_FLAG_*)
- * return net_socket_t* - Указатель на созданный сокет или NULL при ошибке
+ * socketOut - Указатель на созданный сокет
  */
-net_socket_t* net_socket_create(net_family_t family, net_protocol_t protocol, int flags);
+net_error_t net_socket_create(net_family_t family, net_protocol_t protocol, int flags, net_socket_t* socketOut);
 
 // Закрытие сокета и освобождение ресурсов
 net_error_t net_socket_close(net_socket_t* sock);
@@ -144,9 +144,9 @@ net_error_t net_socket_listen(net_socket_t* sock, int backlog);
  * Принятие входящего соединения (для TCP-сервера)
  * sock - Слушающий сокет
  * client_addr [out] - Адрес клиента (может быть NULL)
- * return net_socket_t* - Новый сокет для общения с клиентом или NULL при ошибке
+ * socketListen - Новый сокет для общения с клиентом или NULL при ошибке
  */
-net_socket_t* net_socket_accept(net_socket_t* sock, net_address_t* client_addr);
+net_error_t net_socket_accept(net_socket_t* sock, net_address_t* client_addr, net_socket_t* socket_listen);
 
 // ----- Отправка и прием данных -----
 
@@ -184,7 +184,7 @@ net_error_t net_socket_receive_from(net_socket_t* sock, void* buffer, size_t buf
 net_error_t net_address_parse(const char* str, uint16_t default_port, net_address_t* addr);
 
 // Преобразование структуры net_address_t в строку
-const char* net_address_to_string(const net_address_t* addr, char* buffer, size_t buffer_size);
+net_error_t net_address_to_string(const net_address_t* addr, char* buffer, size_t buffer_size, const char* str_out);
 
 // Получение локального адреса сокета
 net_error_t net_socket_get_local_address(net_socket_t* sock, net_address_t* addr);
@@ -204,13 +204,13 @@ net_error_t net_socket_can_write(net_socket_t* sock, int timeout_ms, int* can_wr
 // ----- Функции получения последней ошибки -----
 
 // Получение текстового описания последней ошибки для данного сокета
-const char* net_socket_last_error(net_socket_t* sock);
+net_error_t net_socket_last_error(net_socket_t* sock, const char* str_error);
 
 // Получение текстового описания кода ошибки
-const char* net_error_string(net_error_t err);
+net_error_t net_error_string(net_error_t err, const char* error_description);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif NETWORK_API_H 
+#endif

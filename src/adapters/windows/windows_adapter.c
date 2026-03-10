@@ -1,7 +1,7 @@
 #include "windows_adapter.h"
 
 // Инициализаяция виртуальной таблицы функций
-static const net_vtable_dispatcher windows_vtable = {
+const net_vtable_dispatcher windows_vtable = {
     .bind_net_initialize                = windows_net_initialize,
     .bind_net_cleanup                   = windows_net_cleanup,
     .bind_net_socket_create             = windows_net_socket_create,
@@ -26,9 +26,3 @@ static const net_vtable_dispatcher windows_vtable = {
     .bind_net_socket_last_error         = windows_net_socket_last_error,
     .bind_net_error_string              = windows_net_error_string,
 };
-
-// Привязка windows vtable
-__attribute__((constructor))
-static void windows_vtable_registre() {
-    vtable = &windows_vtable;
-}

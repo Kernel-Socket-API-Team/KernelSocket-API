@@ -1,7 +1,7 @@
 #include "linux_adapter.h"
 
 // Инициализаяция виртуальной таблицы функций
-static const net_vtable_dispatcher linux_vtable = {
+const net_vtable_dispatcher linux_vtable = {
     .bind_net_initialize                = linux_net_initialize,
     .bind_net_cleanup                   = linux_net_cleanup,
     .bind_net_socket_create             = linux_net_socket_create,
@@ -26,9 +26,3 @@ static const net_vtable_dispatcher linux_vtable = {
     .bind_net_socket_last_error         = linux_net_socket_last_error,
     .bind_net_error_string              = linux_net_error_string,
 };
-
-// Привязка linux vtable
-__attribute__((constructor))
-static void linux_vtable_registre() {
-    vtable = &linux_vtable;
-}
