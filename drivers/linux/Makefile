@@ -3,7 +3,7 @@ IMAGE_NAME = kernelsocket-builder
 CONTAINER_NAME = ks-build
 
 # Версия ядра, необходимо синхронизировать с версией которая будет на ВМ!!!
-KERNEL_VERSION := 6.5.0-41-generic
+KERNEL_VERSION := 6.8.0-101-generic
 
 # Текущая директория (монтируется в контейнер)
 WORKSPACE = $(realpath $(CURDIR)/../..)
@@ -48,10 +48,6 @@ build-tcp:
 build-udp:
 	$(MAKE) build BUILD_TYPE=udp_client
 
-.PHONY: clean
-clean:
-	rm -rf $(BUILD)
-
 .PHONY: clean-docker
 clean-docker:
 	docker rmi $(IMAGE_NAME) 2>/dev/null || true
@@ -67,8 +63,6 @@ help:
 	@echo "  build-tcp        - сборка драйвера для теста tcp"
 	@echo "  build-udp        - сборка драйвера для теста udp"
 	@echo "  build            - сборка драйвера (по умолчанию для теста tcp)"
-	@echo "  clean            - очистка файлов сборки"
-	@echo "  clean-docker     - полная очистка Docker"
 	@echo "  help             - показать эту справку"
 
 # По умолчанию
