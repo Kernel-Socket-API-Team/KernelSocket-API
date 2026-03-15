@@ -139,13 +139,13 @@ net_error_t net_socket_receive_from(net_socket_t* sock, void* buffer, size_t buf
         return vtable->bind_net_socket_receive_from(sock, buffer, buffer_size, src_addr, received);
 }
 
-net_error_t net_address_parse(const char* str, uint16_t default_port, net_address_t* addr) {
+net_error_t net_address_parse(const char* str, net_family_t ip_family, net_address_t* addr) {
     if (!vtable)
         return NET_ERROR_NOT_INITIALIZED;
     else if (!vtable->bind_net_address_parse)
         return NET_ERROR_INVALID_VTABLE;
     else
-        return vtable->bind_net_address_parse(str, default_port, addr);
+        return vtable->bind_net_address_parse(str, ip_family, addr);
 }
 
 net_error_t net_address_to_string(const net_address_t* addr, char* buffer, size_t buffer_size, const char* str_out) {

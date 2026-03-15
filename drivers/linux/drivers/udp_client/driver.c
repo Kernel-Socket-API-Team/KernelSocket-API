@@ -28,7 +28,7 @@ static int send_udp_kernel(char *msg, int len) {
     src_addr.sin_family = AF_INET;
     
     // Конвертация source IP
-    if (!in4_pton("192.168.0.104", -1, (u8 *)&ip_addr, -1, NULL)) {
+    if (!in4_pton("0.0.0.0", -1, (u8 *)&ip_addr, -1, NULL)) {
         printk(KERN_ERR "Failed to convert source IP address\n");
         sock_release(sock);
 
