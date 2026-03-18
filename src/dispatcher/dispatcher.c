@@ -12,6 +12,16 @@ const net_vtable_dispatcher* vtable =
     &linux_vtable;
 #endif
 
+// Реализация сокета (скрыта от пользователя)
+struct net_socket {
+    net_address_t addr;             // Настройки адреса сокета
+    net_socket_options_t options;   // Настройки различных опций сокета
+    net_error_t error;              // Храним последнюю ошибку, которая возникла при работе с сокетом
+    
+    void* last_error;               // Храним указатель на последнюю ошибку в контексте конкретной ОС (NTSTATUS ...)
+};
+
+
 // Безопастная маршрутизация интерфейса на платформенное определение
 net_error_t net_initialize(void) {
     if (!vtable)

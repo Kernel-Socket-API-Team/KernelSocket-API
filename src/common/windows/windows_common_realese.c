@@ -33,6 +33,36 @@ net_error_t windows_net_address_parse(const char* str, net_family_t ip_family, n
     return convert_status_from_windows(status);
 }
 
+
+net_error_t windows_net_address_to_string (const net_address_t* addr, char* buffer, size_t buffer_size, const char* str_out) {
+    if (!addr || !buffer || !buffer_size) return NET_ERROR_INVALID_PARAM;
+
+    NTSTATUS status;
+
+    /*
+    Перед добавление поддержки, конвертации портов требуется, протестировать 
+    данную функцию и ее вывод. При этом в данной функции гарантируется что 
+    addr хранит порт уже в host режиме. Иначе следует выдавать NET_ERROR_INVALID_PARAM.
+    (реализолвать функцию в windows_common.h и windows_common.c)
+    */
+
+    if (addr->family == NET_AF_INET4) {
+
+        IN_ADDR ip; 
+        ip.S_un.S_addr = addr->addr.ipv4;
+
+        status = RtlIpv4AddressToStringA(&ip, 0, buffer, (PULONG)&buffer_size);
+    } else if (addr->family == NET_AF_INET6) {
+        IN6_ADDR ip;
+
+        memcpy(&ip, addr->addr.ipv6, 16);
+
+        status = RtlIpv6AddressToStringExA(&ip, 0, buffer, (PULONG)&buffer_size);
+    } else return NET_ERROR_INVALID_PARAM;
+
+    return convert_status_from_windows(status);
+}
+
 // Sttubs
 net_error_t windows_net_initialize () {
     return (net_error_t)0;
@@ -123,14 +153,6 @@ net_error_t windows_net_socket_receive_from (net_socket_t* s, void* ss, size_t s
     sss = 0;
     ssss = 0;
     sssss = 0;
-    return (net_error_t)0;
-}
-
-net_error_t windows_net_address_to_string (const net_address_t* s, char* ss, size_t sss, const char* ssss) {
-    s = 0;
-    ss = 0;
-    sss = 0;
-    ssss = 0;
     return (net_error_t)0;
 }
 
