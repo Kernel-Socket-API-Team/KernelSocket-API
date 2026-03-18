@@ -1,7 +1,7 @@
 #ifndef NETWORK_API_H
 #define NETWORK_API_H
 
-/**
+/*
  * ksockapi.h
  * Главный заголовочный файл Kernel Socket API
  * 
@@ -9,11 +9,32 @@
  * Для использования API достаточно включить этот файл.
  */
 
-#include <stddef.h>
-#include <stdint.h>
-
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifdef _WIN32    // Windows kernel type
+#include <ntddk.h>
+
+// стандартные типы в Windows Kernel
+typedef UCHAR   uint8_t;
+typedef USHORT  uint16_t;
+typedef ULONG   uint32_t;
+typedef ULONGLONG uint64_t;
+
+typedef CHAR    int8_t;
+typedef SHORT   int16_t;
+typedef LONG    int32_t;
+typedef LONGLONG int64_t;
+
+typedef SIZE_T  size_t;
+typedef SSIZE_T ptrdiff_t;
+
+#else // Linux kernel type
+#include <linux/types.h>
+#include <linux/kernel.h>
+#include <linux/stddef.h>
+
 #endif
 
 /* 
@@ -24,12 +45,16 @@ extern "C" {
 
 // Коды возврата
 typedef enum {
-    NET_ERROR_NOT_INITIALIZED = 0,          // Библиотека не инициализирована
-    NET_ERROR_INVALID_VTABLE = -1,          // Некорректная виртуальная таблица
+    NET_ERROR_NOT_INITIALIZED = 0,      // Библиотека не инициализирована
+    NET_ERROR_INVALID_VTABLE = -1,      // Некорректная виртуальная таблица
     
-    NET_SUCCESS = -3,
-    NET_ERROR_GENERIC = -4,
-    NET_ERROR_INVALID_PARAM = -5,
+    NET_SUCCESS = -2,                   // Успешная работа функции
+    NET_ERROR_NO_MEMORY = -3,           // Ошибка работы с памятью
+    NET_ERROR_ACCESS_DENIED = -4,       // Ошибка прав доступа
+    NET_ERROR_TIMEOUT = -5,             // Превышено время ожидания операции
+    NET_ERROR_BUFFER_TOO_SMALL = -6,    // Размер буфера слишком малл
+    NET_ERROR_INVALID_PARAM = -7,       // Неправильные параметры
+    NET_ERROR_GENERIC = -8,             // Общая (неизвестная) ошибка
 	/* Количество кодов возрастет в дальнейшем, их необходимость 
 	важно обсудить с разработчиками */
 } net_error_t;
@@ -66,7 +91,6 @@ typedef enum {
  * Структуры данных
  * ======================================
  */
-
 // Дескриптор сокета (абстрактный тип)
 typedef struct net_socket net_socket_t;
 
@@ -179,9 +203,8 @@ net_error_t net_socket_receive_from(net_socket_t* sock, void* buffer, size_t buf
 /*
  * Преобразование строкового адреса в структуру net_address_t
  * str - Адрес в виде строки (например, "192.168.1.1" или "::1")
- * default_port - Порт по умолчанию (если например не указан в адресе)
  */
-net_error_t net_address_parse(const char* str, uint16_t default_port, net_address_t* addr);
+net_error_t net_address_parse(const char* str, net_family_t ip_family, net_address_t* addr);
 
 // Преобразование структуры net_address_t в строку
 net_error_t net_address_to_string(const net_address_t* addr, char* buffer, size_t buffer_size, const char* str_out);
