@@ -1,0 +1,1 @@
+savedcmd_/workspace/compileLibraryForLinux/build/ksockapi.mod := printf '%s\n'   src/common/linux/linux_common_release.o src/dispatcher/dispatcher.o src/adapters/linux/linux_adapter.o src/common/linux/linux_common.o | awk '!x[$$0]++ { print("/workspace/compileLibraryForLinux/build/"$$0) }' > /workspace/compileLibraryForLinux/build/ksockapi.mod
