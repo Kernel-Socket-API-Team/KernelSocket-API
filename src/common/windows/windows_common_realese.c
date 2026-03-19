@@ -33,31 +33,32 @@ net_error_t windows_net_address_parse(const char* str, net_family_t ip_family, n
     return convert_status_from_windows(status);
 }
 
-
-net_error_t windows_net_address_to_string (const net_address_t* addr, char* buffer, size_t buffer_size, const char* str_out) {
+net_error_t windows_net_address_to_string (const net_address_t* addr, char* buffer, size_t buffer_size, bool include_port) {
+    
+    // Проверка валидности входных параметров
     if (!addr || !buffer || !buffer_size) return NET_ERROR_INVALID_PARAM;
 
-    NTSTATUS status;
+    // Проверка, что буфер достаточного размера для адреса (+порт, если требуется)
+    net_addr_str_size_t str_size = net_address_required_size(addr->family, include_port);
+    if (str_size.max == 0) return NET_ERROR_INVALID_PARAM;
+    if (buffer_size < str_size.max) return NET_ERROR_BUFFER_TOO_SMALL;
 
-    /*
-    Перед добавление поддержки, конвертации портов требуется, протестировать 
-    данную функцию и ее вывод. При этом в данной функции гарантируется что 
-    addr хранит порт уже в host режиме. Иначе следует выдавать NET_ERROR_INVALID_PARAM.
-    (реализолвать функцию в windows_common.h и windows_common.c)
-    */
+    // Подготовка порта
+    uint16_t host_port = include_port ? RtlUshortByteSwap(addr->port) : 0;
+    
+    // Конвертация адреса в строку
+    NTSTATUS status;
+    ULONG size = (ULONG)buffer_size;
 
     if (addr->family == NET_AF_INET4) {
-
         IN_ADDR ip; 
         ip.S_un.S_addr = addr->addr.ipv4;
-
-        status = RtlIpv4AddressToStringA(&ip, 0, buffer, (PULONG)&buffer_size);
+        status = RtlIpv4AddressToStringExA(&ip, (USHORT)host_port, buffer, &size);
     } else if (addr->family == NET_AF_INET6) {
         IN6_ADDR ip;
-
-        memcpy(&ip, addr->addr.ipv6, 16);
-
-        status = RtlIpv6AddressToStringExA(&ip, 0, buffer, (PULONG)&buffer_size);
+        RtlCopyMemory(&ip, addr->addr.ipv6, 16);
+        // scope не поддерживается!
+        status = RtlIpv6AddressToStringExA(&ip, 0, (USHORT)host_port, buffer, &size);
     } else return NET_ERROR_INVALID_PARAM;
 
     return convert_status_from_windows(status);

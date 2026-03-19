@@ -158,13 +158,13 @@ net_error_t net_address_parse(const char* str, net_family_t ip_family, net_addre
         return vtable->bind_net_address_parse(str, ip_family, addr);
 }
 
-net_error_t net_address_to_string(const net_address_t* addr, char* buffer, size_t buffer_size, const char* str_out) {
+net_error_t net_address_to_string(const net_address_t* addr, char* buffer, size_t buffer_size, bool include_port) {
     if (!vtable)
         return NET_ERROR_NOT_INITIALIZED;
     else if (!vtable->bind_net_address_to_string)
         return NET_ERROR_INVALID_VTABLE;
     else
-        return vtable->bind_net_address_to_string(addr, buffer, buffer_size, str_out);
+        return vtable->bind_net_address_to_string(addr, buffer, buffer_size, include_port);
 }
 
 net_error_t net_socket_get_local_address(net_socket_t* sock, net_address_t* addr) {

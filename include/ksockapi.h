@@ -30,6 +30,8 @@ typedef LONGLONG int64_t;
 typedef SIZE_T  size_t;
 typedef SSIZE_T ptrdiff_t;
 
+typedef BOOLEAN bool;
+
 #else // Linux kernel type
 #include <linux/types.h>
 #include <linux/kernel.h>
@@ -115,6 +117,9 @@ typedef struct net_socket_options {
     int broadcast;                // Разрешить broadcast (0/1)
     int keepalive;                // Использовать keepalive (0/1)
 } net_socket_options_t;
+
+// Универсальная длина буффера для перевода адреса в строкове представление
+#define NET_ADDRSTRLEN 54
 
 /* 
  * ======================================
@@ -207,7 +212,7 @@ net_error_t net_socket_receive_from(net_socket_t* sock, void* buffer, size_t buf
 net_error_t net_address_parse(const char* str, net_family_t ip_family, net_address_t* addr);
 
 // Преобразование структуры net_address_t в строку
-net_error_t net_address_to_string(const net_address_t* addr, char* buffer, size_t buffer_size, const char* str_out);
+net_error_t net_address_to_string(const net_address_t* addr, char* buffer, size_t buffer_size, bool include_port);
 
 // Получение локального адреса сокета
 net_error_t net_socket_get_local_address(net_socket_t* sock, net_address_t* addr);

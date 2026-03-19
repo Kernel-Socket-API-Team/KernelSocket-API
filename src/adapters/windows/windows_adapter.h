@@ -23,7 +23,7 @@ net_error_t     windows_net_socket_send_to              (net_socket_t*, const vo
 net_error_t     windows_net_socket_receive              (net_socket_t*, void*, size_t, size_t*);
 net_error_t     windows_net_socket_receive_from         (net_socket_t*, void*, size_t, net_address_t*, size_t*);
 net_error_t     windows_net_address_parse               (const char*, net_family_t, net_address_t*);
-net_error_t     windows_net_address_to_string           (const net_address_t*, char*, size_t, const char*);
+net_error_t     windows_net_address_to_string           (const net_address_t*, char*, size_t, bool);
 net_error_t     windows_net_socket_get_local_address    (net_socket_t*, net_address_t*);
 net_error_t     windows_net_socket_get_remote_address   (net_socket_t*, net_address_t*);
 net_error_t     windows_net_socket_set_nonblocking      (net_socket_t*, int);
