@@ -321,7 +321,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath) 
       /* 
       Оператор перехода, который используется для прыжка вперед
       чтобы корретно очистить ресурсы которые были выделены для работы драйвера.
-       */
+      */
       goto Cleanup; 
     }
 
