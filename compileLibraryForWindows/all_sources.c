@@ -4,3 +4,4 @@
 #include "../src/adapters/windows/windows_adapter.c"
 #include "../src/common/windows/windows_common.c"
 #include "../src/common/windows/windows_common_realese.c"
+#include "../src/common/common.c"

@@ -3,7 +3,7 @@
     <Platform Name="ARM64" />
     <Platform Name="x64" />
   </Configurations>
-  <Project Path="compileLibraryForWindows.vcxproj">
+  <Project Path="addresToStringCommonParse.vcxproj">
     <Deploy Solution="*|ARM64" />
     <Deploy Solution="Release|x64" />
   </Project>
