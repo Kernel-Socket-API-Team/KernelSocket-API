@@ -1,1 +1,2 @@
-/workspace/drivers/linux/drivers/driverCheckCompileModule/../../../../compileLibraryForLinux/ksockapi.o
+./main.o
+./../../../../compileLibraryForLinux/ksockapi_sources.o

@@ -1,13 +1,19 @@
-KDIR := /usr/src/linux-headers-6.8.0-101-generic
+KERNEL_VERSION ?= $(shell uname -r)
+KDIR := /lib/modules/$(KERNEL_VERSION)/build
 PWD := $(shell pwd)
 
-obj-m += driverCheckCompileModule.o # имя объектного фала должно совпадать с файлом у которого разрешение .c
+obj-m += driverCheckCompileModule.o
 
-# линкуемся с библиотекой
-driverCheckCompileModule-objs := ../../../../compileLibraryForLinux/ksockapi.o
+driverCheckCompileModule-y := \
+    main.o \
+    ../../../../compileLibraryForLinux/ksockapi_sources.o
+
+ccflags-y += -I../../../../compileLibraryForLinux/include
+ccflags-y += -I../../../../compileLibraryForLinux/src
+ccflags-y += -fno-omit-frame-pointer
 
 all:
 	$(MAKE) -C $(KDIR) M=$(PWD) modules
 
 clean:
-	$(MAKE) -C $(KDIR) M=$(PWD) clean
+	$(MAKE) -C $(KDIR) M=$(PWD) cleanobj-m += driverCheckCompileModule.o

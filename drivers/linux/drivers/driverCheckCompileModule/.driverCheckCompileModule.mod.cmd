@@ -1,1 +1,1 @@
-savedcmd_/workspace/drivers/linux/drivers/driverCheckCompileModule/driverCheckCompileModule.mod := printf '%s\n'   ../../../../compileLibraryForLinux/ksockapi.o | awk '!x[$$0]++ { print("/workspace/drivers/linux/drivers/driverCheckCompileModule/"$$0) }' > /workspace/drivers/linux/drivers/driverCheckCompileModule/driverCheckCompileModule.mod
+savedcmd_driverCheckCompileModule.mod := printf '%s\n'   main.o ../../../../compileLibraryForLinux/ksockapi_sources.o | awk '!x[$$0]++ { print("./"$$0) }' > driverCheckCompileModule.mod

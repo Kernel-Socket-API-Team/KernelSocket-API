@@ -1,1 +1,0 @@
-savedcmd_/workspace/compileLibraryForLinux/build/ksockapi.o := ld -m elf_x86_64 -z noexecstack   -r -o /workspace/compileLibraryForLinux/build/ksockapi.o @/workspace/compileLibraryForLinux/build/ksockapi.mod 

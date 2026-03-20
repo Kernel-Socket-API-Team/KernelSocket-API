@@ -1,1 +1,1 @@
-savedcmd_/workspace/drivers/linux/drivers/driverCheckCompileModule/driverCheckCompileModule.o := ld -m elf_x86_64 -z noexecstack   -r -o /workspace/drivers/linux/drivers/driverCheckCompileModule/driverCheckCompileModule.o @/workspace/drivers/linux/drivers/driverCheckCompileModule/driverCheckCompileModule.mod 
+savedcmd_driverCheckCompileModule.o := ld -m elf_x86_64 -z noexecstack --no-warn-rwx-segments   -r -o driverCheckCompileModule.o @driverCheckCompileModule.mod 

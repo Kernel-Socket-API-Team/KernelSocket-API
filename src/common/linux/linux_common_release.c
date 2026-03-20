@@ -8,7 +8,7 @@ MODULE_LICENSE("GPL");
 
 // Sttubs
 net_error_t linux_net_initialize () {
-    printk(KERN_EMERG "linux_net_initialize is work!\n");
+    panic("linux_net_initialize is work!\n");
     return (net_error_t)0;
 }
 

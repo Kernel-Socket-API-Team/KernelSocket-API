@@ -1,1 +1,0 @@
-savedcmd_/workspace/compileLibraryForLinux/build/ksockapi.ko := ld -r -m elf_x86_64 -z noexecstack --build-id=sha1  -T scripts/module.lds -o /workspace/compileLibraryForLinux/build/ksockapi.ko /workspace/compileLibraryForLinux/build/ksockapi.o /workspace/compileLibraryForLinux/build/ksockapi.mod.o

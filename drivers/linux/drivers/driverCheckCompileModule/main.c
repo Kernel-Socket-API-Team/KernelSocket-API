@@ -3,11 +3,12 @@
 #include <linux/init.h>
 
 #include "../../../../include/ksockapi.h"
+#include "../../../../src/adapters/linux/linux_adapter.h"
 
 static int __init test_init(void)
 {
     printk(KERN_INFO "Test driver loaded\n");
-    net_initialize();
+    linux_net_initialize();
     return 0;
 }
 

@@ -17,7 +17,7 @@ Release/
 *.ilk
 *.exp
 *.lastbuildstate
-
+*.o.cmd
 # Visual Studio
 .vs/
 *.opensdf

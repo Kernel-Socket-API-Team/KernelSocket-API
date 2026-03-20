@@ -1,1 +1,0 @@
-savedcmd_/workspace/compileLibraryForLinux/build/Module.symvers :=  scripts/mod/modpost -M -m -a      -o /workspace/compileLibraryForLinux/build/Module.symvers -T /workspace/compileLibraryForLinux/build/modules.order -i Module.symvers -e 

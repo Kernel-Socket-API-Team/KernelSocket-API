@@ -1,42 +1,48 @@
-KDIR := /usr/src/linux-headers-6.8.0-101-generic
+# Makefile для сборки библиотеки ksockapi (использует kbuild)
+
+# Определяем версию ядра
+KERNEL_VERSION ?= $(shell uname -r)
+KDIR := /lib/modules/$(KERNEL_VERSION)/build
 PWD := $(shell pwd)
 
+# Временная директория сборки
 BUILD_DIR := $(PWD)/build
 
-build:
-	mkdir -p $(BUILD_DIR)/src
+# Создаём временный модуль
+MODULE_NAME := ksockapi_lib
+obj-m += $(MODULE_NAME).o
+$(MODULE_NAME)-objs := \
+    src/common/linux/linux_common_release.o \
+    src/dispatcher/dispatcher.o \
+    src/adapters/linux/linux_adapter.o \
+    src/common/linux/linux_common.o
 
-	# ✅ Копируем ВСЮ структуру (это ключ)
-	cp -r ../src/* $(BUILD_DIR)/src/
+# Флаги компиляции
+ccflags-y := -I$(PWD)/../include
+ccflags-y += -I$(PWD)/../src
+ccflags-y += -Wno-error -Wno-unused-parameter
+
+all:
+	mkdir -p $(BUILD_DIR)
+	
+	# Копируем ВСЮ структуру src (сохраняя иерархию)
+	cp -r ../src $(BUILD_DIR)/
+	
+	# Копируем заголовки
 	cp -r ../include $(BUILD_DIR)/
-
-	# Kbuild Makefile
-	echo "obj-m += ksockapi.o" > $(BUILD_DIR)/Makefile
-	echo "ksockapi-objs := \\" >> $(BUILD_DIR)/Makefile
-	echo "    src/common/linux/linux_common_release.o \\" >> $(BUILD_DIR)/Makefile
-	echo "    src/dispatcher/dispatcher.o \\" >> $(BUILD_DIR)/Makefile
-	echo "    src/adapters/linux/linux_adapter.o \\" >> $(BUILD_DIR)/Makefile
-	echo "    src/common/linux/linux_common.o" >> $(BUILD_DIR)/Makefile
-	echo "" >> $(BUILD_DIR)/Makefile
-	echo "ccflags-y += -I\$$(src)/include" >> $(BUILD_DIR)/Makefile
-	echo "ccflags-y += -I\$$(src)/src" >> $(BUILD_DIR)/Makefile
-
-	echo "ccflags-y += -O0" >> $(BUILD_DIR)/Makefile
-	echo "ccflags-y += -fno-omit-frame-pointer" >> $(BUILD_DIR)/Makefile
-
-	# Сборка
+	
+	# Копируем этот Makefile в build
+	cp $(PWD)/Makefile $(BUILD_DIR)/Makefile
+	
+	# Компилируем через kbuild
 	$(MAKE) -C $(KDIR) M=$(BUILD_DIR) modules
-
-	# Забираем результат
-	cp $(BUILD_DIR)/ksockapi.o .
-	cp $(BUILD_DIR)/.*.cmd . 2>/dev/null || :
-
-	# Чистим build
-	# rm -rf $(BUILD_DIR)
-
-	@echo "✔ Built: ksockapi.o"
+	
+	# Забираем готовый объектный файл
+	cp $(BUILD_DIR)/$(MODULE_NAME).o ksockapi.o
+	
+	@echo "✅ Библиотека ksockapi.o готова"
 
 clean:
-	rm -f ksockapi.o
+	rm -rf $(BUILD_DIR) ksockapi.o
 
-.PHONY: build clean
+.PHONY: all clean
