@@ -1,14 +1,35 @@
+# Build directories
 build/
 build-linux/
 build-windows/
 packages/
 
+# Architecture specific
 x64/
 x86/
 Debug/
 Release/
 
-# Все временные файлы
+# Linux kernel module build artifacts
+*.ko
+*.ko.cmd
+*.ko.d
+*.mod
+*.mod.c
+*.mod.o
+*.o
+*.o.cmd
+*.o.d
+*.order
+*.symvers
+*.cmd
+*.tmp_versions/
+modules.order
+Module.symvers
+.mod.c
+.mod.o
+
+# Temporary and object files
 *.obj
 *.pdb
 *.tlog/
@@ -17,16 +38,23 @@ Release/
 *.ilk
 *.exp
 *.lastbuildstate
-*.o.cmd
+
 # Visual Studio
 .vs/
 *.opensdf
 *.opendb
-*.log
-*.tlog
+*.sln.docstates
 
 # User-specific files
 *.user
 *.user.*
 *.suo
-*.sln.docstates
+
+# Compiled shared libraries
+*.so
+*.ko
+
+# Dependency files
+*.d
+*.dwo
+*.dSYM/

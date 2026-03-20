@@ -1,4 +1,4 @@
-KERNEL_VERSION ?= $(shell uname -r)
+KERNEL_VERSION := 6.8.0-101-generic
 KDIR := /lib/modules/$(KERNEL_VERSION)/build
 PWD := $(shell pwd)
 
