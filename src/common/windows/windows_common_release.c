@@ -1,5 +1,49 @@
 #include "windows_common.h"
 
+net_error_t windows_net_initialize () {
+
+    // Если уже инициализирован, просто возвращаем успех
+    if (g_WskContext.Initialized)
+        return NET_SUCCESS;
+    
+    NTSTATUS Status;
+
+    // Регистрация
+    WSK_CLIENT_NPI WskClientNpi;
+    WskClientNpi.ClientContext = &g_WskContext;
+    WskClientNpi.Dispatch = &WskAppDispatch;
+    
+    Status = WskRegister(&WskClientNpi, &g_WskContext.Registration);
+    if (!NT_SUCCESS(Status))
+        return convert_status_from_windows(Status);
+
+    // Инициализация события для синхронизации
+    KeInitializeEvent(&g_WskContext.ProviderReady, NotificationEvent, FALSE);
+
+    // Выделяется память для work item
+    g_WskContext.RetryWorkItem = ExAllocatePoolWithTag(
+        NonPagedPool,               // Тип выделяемой памяти (нестраничная)  
+        sizeof(WORK_QUEUE_ITEM),    // Размер выделяемой памяти
+        'WSKC'                      // Тег для отслеживания
+    );
+
+    if (!g_WskContext.RetryWorkItem) {
+        WskDeregister(&g_WskContext.Registration);
+        return convert_status_from_windows(Status);
+    }
+
+    // Инициализация и запуск work item для захвата провайдера
+    ExInitializeWorkItem(
+        g_WskContext.RetryWorkItem, // Куда кладем Work Item
+        WskCaptureThreadRoutine,    // Рабочая функция потока
+        &g_WskContext               // То с чем функция будет работать
+    );
+
+    ExQueueWorkItem(g_WskContext.RetryWorkItem, CriticalWorkQueue);
+
+    return NET_SUCCESS;
+}
+
 net_error_t windows_net_address_parse(const char* str, net_family_t ip_family, net_address_t* addr) {
     if (!str || !addr) return NET_ERROR_INVALID_PARAM;
     
@@ -65,10 +109,6 @@ net_error_t windows_net_address_to_string (const net_address_t* addr, char* buff
 }
 
 // Sttubs
-net_error_t windows_net_initialize () {
-    return (net_error_t)0;
-}
-
 net_error_t windows_net_cleanup () {
     return (net_error_t)0;
 }

@@ -132,6 +132,12 @@ typedef struct net_socket_options {
 // Инициализация библиотеки (вызывается один раз при старте)
 net_error_t net_initialize(void);
 
+// Проверяем готовность библиотеки к использованию
+bool net_is_ready(void);
+
+// Проверяем готовность библиотеки (вызывается в рабочем потоке)
+net_error_t net_wait_ready();
+
 // Завершение работы библиотеки (освобождение ресурсов)
 net_error_t net_cleanup(void);
 
@@ -233,9 +239,6 @@ net_error_t net_socket_can_write(net_socket_t* sock, int timeout_ms, int* can_wr
 
 // Получение текстового описания последней ошибки для данного сокета
 net_error_t net_socket_last_error(net_socket_t* sock, const char* str_error);
-
-// Получение текстового описания кода ошибки
-net_error_t net_error_string(net_error_t err, const char* error_description);
 
 #ifdef __cplusplus
 }
