@@ -1,7 +1,7 @@
 #ifndef DISPATCHER_H
 #define DISPATCHER_H
 
-#include "../include/ksockapi.h"
+#include "../../include/ksockapi.h"
 
 typedef struct {
     net_error_t     (*bind_net_initialize)                  (void);

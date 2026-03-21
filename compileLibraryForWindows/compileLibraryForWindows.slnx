@@ -8,3 +8,4 @@
     <Deploy Solution="Release|x64" />
   </Project>
 </Solution>
+
