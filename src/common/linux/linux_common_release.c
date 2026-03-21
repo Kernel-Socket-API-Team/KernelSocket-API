@@ -1,11 +1,5 @@
 #include "linux_common.h"
 
-#include <linux/module.h>
-// ХАК: MODULE_LICENSE здесь нужен только для modpost
-// Фактическая лицензия определяется в конечном драйвере
-MODULE_LICENSE("GPL");
-#include <linux/printk.h> 
-
 // Sttubs
 net_error_t linux_net_initialize () {
     printk(KERN_INFO "linux_net_initialize is work!\n");
