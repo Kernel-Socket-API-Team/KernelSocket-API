@@ -1,4 +1,3 @@
-#include "../include/ksockapi.h"
 #include "dispatcher.h"
 
 extern const net_vtable_dispatcher windows_vtable;

@@ -13,5 +13,3 @@
     Полный список ошибок можно посмотреть в ntstatus.h
 */
 net_error_t convert_status_from_windows(NTSTATUS ntstatus);
-
-#endif
