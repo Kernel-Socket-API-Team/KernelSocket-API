@@ -44,6 +44,46 @@ net_error_t windows_net_initialize () {
     return NET_SUCCESS;
 }
 
+net_error_t windows_net_is_ready() {
+    if (!g_WskContext.Initialized) return NET_ERROR_NOT_INITIALIZED;
+    else return NET_SUCCESS;
+}
+
+net_error_t windows_net_wait_ready(const size_t limitMS) {
+
+    if (windows_net_is_ready() == NET_SUCCESS)
+        return NET_SUCCESS;
+
+    NTSTATUS Status;
+    LARGE_INTEGER Timeout;
+    PLARGE_INTEGER pTimeout = NULL;
+    if (limitMS != 0) {
+        Timeout.QuadPart = -(LONGLONG)limitMS * 10000;
+        pTimeout = &Timeout;
+    }
+    
+    Status = KeWaitFOrSingleObject(&g_WskContext.ProviderReady, Executive, KernelMode, FALSE, pTimeout);
+
+    if (!NT_SUCCESS(Status))
+        return convert_status_from_windows(Status);
+    else if (windows_net_is_ready() != NET_SUCCESS);
+        return NET_ERROR_TIMEOUT;
+    else
+        return NET_SUCCESS;
+}
+
+net_error_t windows_net_cleanup () {
+
+    if (!WSK_CONTEXT) 
+        return NET_SUCCESS;
+
+    WskRealeseProviderNPI(&g_WskContext.ProviderNPI);
+
+    WskDerigister(&g_WskContext.Registration);
+
+    return NET_SUCCESS;
+}
+
 net_error_t windows_net_address_parse(const char* str, net_family_t ip_family, net_address_t* addr) {
     if (!str || !addr) return NET_ERROR_INVALID_PARAM;
     
@@ -108,11 +148,25 @@ net_error_t windows_net_address_to_string (const net_address_t* addr, char* buff
     return convert_status_from_windows(status);
 }
 
-// Sttubs
-net_error_t windows_net_cleanup () {
-    return (net_error_t)0;
+net_error_t net_socket_last_error(net_socket_t* sock, const net_error_t* error) {
+    if (!sock)
+        return NET_ERROR_INVALID_PARAM;
+    
+    error = sock->error;
+
+    return NET_SUCCESS;
 }
 
+net_error_t windows_net_socket_last_platform_error(net_socket_t* sock, const void* platform_error) {
+    if (!sock)
+        return NET_ERROR_INVALID_PARAM;
+
+    *platform_error = sock->last_error;
+
+    return NET_SUCCESS;
+}
+
+// Sttubs
 net_error_t windows_net_socket_create (net_family_t s, net_protocol_t ss, int sss, net_socket_t* ssss) {
     s = 0;
     ss = 0;
@@ -226,12 +280,6 @@ net_error_t windows_net_socket_can_write (net_socket_t* s, int ss, int* sss) {
     s = 0;
     ss = 0;
     sss = 0;
-    return (net_error_t)0;
-}
-
-net_error_t windows_net_socket_last_error (net_socket_t* s, const char* ss) {
-    s = 0;
-    ss = 0;
     return (net_error_t)0;
 }
 

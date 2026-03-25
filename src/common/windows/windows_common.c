@@ -27,7 +27,7 @@ VOID WskCaptureThreadRoutine(PVOID Context) {
         );
 
         if (NT_SUCCESS(Status)) {
-             // Успешно захватили - инициализация завершена
+            // Успешно захватили - инициализация завершена
             WskContext->Initialized = TRUE;
             KeSetEvent(&WskContext->ProviderReady, IO_NO_INCREMENT, FALSE);
             break;
