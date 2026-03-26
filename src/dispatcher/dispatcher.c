@@ -182,7 +182,7 @@ net_error_t net_socket_can_write(net_socket_t* sock, int timeout_ms, int* can_wr
         return vtable->bind_net_socket_can_write(sock, timeout_ms, can_write);
 }
 
-net_error_t net_socket_last_error(net_socket_t* sock, const net_error_t* error) {
+net_error_t net_socket_last_error(net_socket_t* sock, net_error_t error) {
     if (!vtable || !vtable->bind_net_socket_last_error)
         return NET_ERROR_INVALID_VTABLE;
     else

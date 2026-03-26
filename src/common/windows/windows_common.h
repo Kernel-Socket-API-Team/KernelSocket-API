@@ -3,7 +3,6 @@
 
 #include "../../adapters/windows/windows_adapter.h"
 #include "../common.h"
-#include <ntddk.h>
 #include <wsk.h>
 #include <wdm.h>
 
@@ -11,9 +10,7 @@
 typedef struct WSK_CONTEXT {
     WSK_REGISTRATION Registration;
     WSK_PROVIDER_NPI ProviderNpi;
-    KEVENT ProviderReady;
     BOOLEAN Initialized;
-    PWORK_QUEUE_ITEM RetryWorkItem;
 } WSK_CONTEXT, *PWSK_CONTEXT;
 
 extern WSK_CONTEXT g_WskContext;
@@ -25,12 +22,11 @@ const WSK_CLIENT_DISPATCH WskAppDispatch = {
     NULL                        // ClientCallback (не используется)
 };
 
-/* Рабочий поток для захвата NPI провайдер */
-VOID WskCaptureThreadRoutine(PVOID Context);
-
 /* 
     Функция конвертации ошибок Windows под интерфес ошибок,
     который определен в ksockapi.h
     Полный список ошибок можно посмотреть в ntstatus.h
 */
 net_error_t convert_status_from_windows(NTSTATUS ntstatus);
+
+#endif

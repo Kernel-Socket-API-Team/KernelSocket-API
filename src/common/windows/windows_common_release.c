@@ -17,30 +17,6 @@ net_error_t windows_net_initialize () {
     if (!NT_SUCCESS(Status))
         return convert_status_from_windows(Status);
 
-    // Инициализация события для синхронизации
-    KeInitializeEvent(&g_WskContext.ProviderReady, NotificationEvent, FALSE);
-
-    // Выделяется память для work item
-    g_WskContext.RetryWorkItem = ExAllocatePoolWithTag(
-        NonPagedPool,               // Тип выделяемой памяти (нестраничная)  
-        sizeof(WORK_QUEUE_ITEM),    // Размер выделяемой памяти
-        'WSKC'                      // Тег для отслеживания
-    );
-
-    if (!g_WskContext.RetryWorkItem) {
-        WskDeregister(&g_WskContext.Registration);
-        return convert_status_from_windows(Status);
-    }
-
-    // Инициализация и запуск work item для захвата провайдера
-    ExInitializeWorkItem(
-        g_WskContext.RetryWorkItem, // Куда кладем Work Item
-        WskCaptureThreadRoutine,    // Рабочая функция потока
-        &g_WskContext               // То с чем функция будет работать
-    );
-
-    ExQueueWorkItem(g_WskContext.RetryWorkItem, CriticalWorkQueue);
-
     return NET_SUCCESS;
 }
 
@@ -54,32 +30,44 @@ net_error_t windows_net_wait_ready(const size_t limitMS) {
     if (windows_net_is_ready() == NET_SUCCESS)
         return NET_SUCCESS;
 
+    ULONG TimeoutMs;
     NTSTATUS Status;
-    LARGE_INTEGER Timeout;
-    PLARGE_INTEGER pTimeout = NULL;
-    if (limitMS != 0) {
-        Timeout.QuadPart = -(LONGLONG)limitMS * 10000;
-        pTimeout = &Timeout;
+
+    // Определяем таймаут для WskCaptureProviderNPI
+    if (limitMS == 0) {
+        // Не ждать, проверить сразу
+        TimeoutMs = 0;
+    } else if (limitMS == (size_t)-1) {  // INFINITE
+        // Ждать бесконечно
+        TimeoutMs = WSK_INFINITE_WAIT;
+    } else {
+        // Ждать указанное количество миллисекунд
+        TimeoutMs = (ULONG)limitMS;
     }
     
-    Status = KeWaitFOrSingleObject(&g_WskContext.ProviderReady, Executive, KernelMode, FALSE, pTimeout);
+    // Захватываем провайдера (блокирует поток)
+    Status = WskCaptureProviderNPI(
+        &g_WskContext.Registration,
+        TimeoutMs,
+        &g_WskContext.ProviderNpi
+    );
 
-    if (!NT_SUCCESS(Status))
-        return convert_status_from_windows(Status);
-    else if (windows_net_is_ready() != NET_SUCCESS);
-        return NET_ERROR_TIMEOUT;
-    else
+    if (Status == STATUS_SUCCESS) {
+        g_WskContext.Initialized = TRUE;
         return NET_SUCCESS;
+    } else if (Status == STATUS_TIMEOUT) {
+        return NET_ERROR_TIMEOUT;
+    } else {
+        return convert_status_from_windows(Status);
+    }
 }
 
 net_error_t windows_net_cleanup () {
-
-    if (!WSK_CONTEXT) 
-        return NET_SUCCESS;
-
-    WskRealeseProviderNPI(&g_WskContext.ProviderNPI);
-
-    WskDerigister(&g_WskContext.Registration);
+  if (g_WskContext.Initialized) {
+    WskReleaseProviderNPI(&g_WskContext.Registration);
+    WskDeregister(&g_WskContext.Registration);
+    g_WskContext.Initialized = FALSE;
+  }
 
     return NET_SUCCESS;
 }
@@ -148,7 +136,7 @@ net_error_t windows_net_address_to_string (const net_address_t* addr, char* buff
     return convert_status_from_windows(status);
 }
 
-net_error_t net_socket_last_error(net_socket_t* sock, const net_error_t* error) {
+net_error_t windows_net_socket_last_error(net_socket_t *sock, net_error_t error) {
     if (!sock)
         return NET_ERROR_INVALID_PARAM;
     
@@ -161,7 +149,7 @@ net_error_t windows_net_socket_last_platform_error(net_socket_t* sock, const voi
     if (!sock)
         return NET_ERROR_INVALID_PARAM;
 
-    *platform_error = sock->last_error;
+    platform_error = sock->last_error;
 
     return NET_SUCCESS;
 }

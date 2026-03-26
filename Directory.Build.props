@@ -23,4 +23,5 @@
     <PropertyGroup Condition="'$(Configuration)' == 'Release'">
         <UseDebugLibraries>false</UseDebugLibraries>
     </PropertyGroup>
+    
 </Project>

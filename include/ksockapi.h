@@ -242,7 +242,7 @@ net_error_t net_socket_can_write(net_socket_t* sock, int timeout_ms, int* can_wr
 // ----- Функции получения последней ошибки -----
 
 // Получение последней ошибки для данного сокета
-net_error_t net_socket_last_error(net_socket_t* sock, const net_error_t* error);
+net_error_t net_socket_last_error(net_socket_t* sock, net_error_t error);
 
 // Получение последние ошибки типа const void*
 net_error_t net_socket_last_platform_error(net_socket_t* sock, const void* platform_error);

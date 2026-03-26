@@ -5,4 +5,3 @@
 #include "../src/common/windows/windows_common.c"
 #include "../src/common/windows/windows_common_release.c"
 #include "../src/common/common.c"
-
