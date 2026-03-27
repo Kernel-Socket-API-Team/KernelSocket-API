@@ -2,9 +2,9 @@
 
 // Инициализаяция виртуальной таблицы функций
 const net_vtable_dispatcher linux_vtable = {
-    .bind_net_initialize                    = linux_net_initialize,
+    .bind_net_register                      = linux_net_register,
+    .bind_net_activate                      = linux_net_activate,
     .bind_net_is_ready                      = linux_net_is_ready,
-    .bind_net_wait_ready                    = linux_net_wait_ready,
     .bind_net_cleanup                       = linux_net_cleanup,
     .bind_net_socket_create                 = linux_net_socket_create,
     .bind_net_socket_close                  = linux_net_socket_close,

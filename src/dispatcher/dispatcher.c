@@ -21,11 +21,18 @@ struct net_socket {
 };
 
 // Безопастная маршрутизация интерфейса на платформенное определение
-net_error_t net_initialize(void) {
-    if (!vtable || !vtable->bind_net_initialize)
+net_error_t net_register(void) {
+    if (!vtable || !vtable->bind_net_register)
         return NET_ERROR_INVALID_VTABLE;
     else
-        return vtable->bind_net_initialize();
+        return vtable->bind_net_register();
+}
+
+net_error_t net_activate(const size_t limitMS) {
+    if (!vtable || !vtable->bind_net_activate)
+        return NET_ERROR_INVALID_VTABLE;
+    else 
+        return vtable->bind_net_activate(limitMS);
 }
 
 net_error_t net_is_ready(void) {
@@ -33,13 +40,6 @@ net_error_t net_is_ready(void) {
         return NET_ERROR_INVALID_VTABLE;
     else 
         return vtable->bind_net_is_ready();
-}
-
-net_error_t net_wait_ready(const size_t limitMS) {
-    if (!vtable || !vtable->bind_net_wait_ready)
-        return NET_ERROR_INVALID_VTABLE;
-    else 
-        return vtable->bind_net_wait_ready(limitMS);
 }
 
 net_error_t net_cleanup(void) {

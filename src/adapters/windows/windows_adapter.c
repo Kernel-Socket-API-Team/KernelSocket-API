@@ -2,9 +2,9 @@
 
 // Инициализаяция виртуальной таблицы функций
 const net_vtable_dispatcher windows_vtable = {
-    .bind_net_initialize                    = windows_net_initialize,
+    .bind_net_register                      = windows_net_register,
+    .bind_net_activate                      = windows_net_activate,
     .bind_net_is_ready                      = windows_net_is_ready,
-    .bind_net_wait_ready                    = windows_net_wait_ready,
     .bind_net_cleanup                       = windows_net_cleanup,
     .bind_net_socket_create                 = windows_net_socket_create,
     .bind_net_socket_close                  = windows_net_socket_close,

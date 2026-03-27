@@ -48,15 +48,16 @@ typedef BOOLEAN bool;
 // Коды возврата
 typedef enum {
     NET_ERROR_NOT_INITIALIZED = 0,      // Библиотека не инициализирована
-    NET_ERROR_INVALID_VTABLE = -1,      // Некорректная виртуальная таблица
+    NET_ERROR_NOT_REGISTER = -1,
+    NET_ERROR_INVALID_VTABLE = -2,      // Некорректная виртуальная таблица
     
-    NET_SUCCESS = -2,                   // Успешная работа функции
-    NET_ERROR_NO_MEMORY = -3,           // Ошибка работы с памятью
-    NET_ERROR_ACCESS_DENIED = -4,       // Ошибка прав доступа
-    NET_ERROR_TIMEOUT = -5,             // Превышено время ожидания операции
-    NET_ERROR_BUFFER_TOO_SMALL = -6,    // Размер буфера слишком малл
-    NET_ERROR_INVALID_PARAM = -7,       // Неправильные параметры
-    NET_ERROR_GENERIC = -8,             // Общая (неизвестная) ошибка
+    NET_SUCCESS = -3,                   // Успешная работа функции
+    NET_ERROR_NO_MEMORY = -4,           // Ошибка работы с памятью
+    NET_ERROR_ACCESS_DENIED = -5,       // Ошибка прав доступа
+    NET_ERROR_TIMEOUT = -6,             // Превышено время ожидания операции
+    NET_ERROR_BUFFER_TOO_SMALL = -7,    // Размер буфера слишком малл
+    NET_ERROR_INVALID_PARAM = -8,       // Неправильные параметры
+    NET_ERROR_GENERIC = -9,             // Общая (неизвестная) ошибка
 	/* Количество кодов возрастет в дальнейшем, их необходимость 
 	важно обсудить с разработчиками */
 } net_error_t;
@@ -130,17 +131,17 @@ typedef struct net_socket_options {
 // ----- Инициализация и завершение работы -----
 
 // Инициализация библиотеки (вызывается один раз при старте)
-net_error_t net_initialize(void);
+net_error_t net_register(void);
+
+// Проверяем готовность библиотеки (вызывается в рабочем потоке)
+// При передаче 0 ждем до момента инициализации (эмитация INFINITY)
+// NET_SUCCESS в случае успеха и NET_ERROR_TIMEOUT в противном случае
+net_error_t net_activate(const size_t limitMS);
 
 // Проверяем готовность библиотеки к использованию
 // вовзращает NET_SUCCESS в случае успешной инициализации и
 // возвращает NET_ERROR_NOT_INITIALIZED
 net_error_t net_is_ready(void);
-
-// Проверяем готовность библиотеки (вызывается в рабочем потоке)
-// При передаче 0 ждем до момента инициализации (эмитация INFINITY)
-// NET_SUCCESS в случае успеха и NET_ERROR_TIMEOUT в противном случае
-net_error_t net_wait_ready(const size_t limitMS);
 
 // Завершение работы библиотеки (освобождение ресурсов)
 net_error_t net_cleanup(void);

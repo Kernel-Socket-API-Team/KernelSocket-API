@@ -8,9 +8,9 @@ extern "C" {
 #endif
 
 // Интерфейс для Windows реализации
-net_error_t     windows_net_initialize                  (void);
+net_error_t     windows_net_register                    (void);
+net_error_t     windows_net_activate                (const size_t);
 net_error_t     windows_net_is_ready                    (void);
-net_error_t     windows_net_wait_ready                  (const size_t);
 net_error_t     windows_net_cleanup                     (void);
 net_error_t     windows_net_socket_create               (net_family_t, net_protocol_t , int, net_socket_t*);
 net_error_t     windows_net_socket_close                (net_socket_t*);
