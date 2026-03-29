@@ -3,7 +3,7 @@
 net_error_t windows_net_register () {
 
     // Если уже инициализирован, просто возвращаем успех
-    if (g_WskContext.Registration && g_WskContext.ProviderNpi)
+  if (g_WskContext.Registered)
         return NET_SUCCESS;
     
     NTSTATUS Status;
@@ -17,16 +17,16 @@ net_error_t windows_net_register () {
     if (!NT_SUCCESS(Status))
         return convert_status_from_windows(Status);
 
+    g_WskContext.Registered = TRUE;
+
     return NET_SUCCESS;
 }
 
 net_error_t windows_net_activate (const size_t limitMS) {
 
-    if (g_WskContext.Registration && g_WskContext.ProviderNpi)
-        return NET_ERROR_NOT_REGISTER;
-
-    if (windows_net_is_ready() == NET_SUCCESS)
-        return NET_SUCCESS;
+    net_error_t lib_current_status = windows_net_is_ready();
+    if (lib_current_status != NET_ERROR_NOT_INITIALIZED)
+        return lib_current_status;
 
     ULONG TimeoutMs;
     NTSTATUS Status;
@@ -61,17 +61,23 @@ net_error_t windows_net_activate (const size_t limitMS) {
 }
 
 net_error_t windows_net_is_ready() {
-    if (!g_WskContext.Initialized) return NET_ERROR_NOT_INITIALIZED;
+    if (!g_WskContext.Registered) return NET_ERROR_NOT_REGISTER;
+    else if (!g_WskContext.Initialized) return NET_ERROR_NOT_INITIALIZED;
     else return NET_SUCCESS;
 }
 
 net_error_t windows_net_cleanup () {
-  if (g_WskContext.Initialized) {
-    WskReleaseProviderNPI(&g_WskContext.Registration);
-    WskDeregister(&g_WskContext.Registration);
-    g_WskContext.Initialized = FALSE;
-    return NET_SUCCESS;
-  } else return NET_ERROR_NOT_INITIALIZED;
+    if (g_WskContext.Registered && g_WskContext.Initialized) {
+        WskReleaseProviderNPI(&g_WskContext.Registration);
+        WskDeregister(&g_WskContext.Registration);
+        g_WskContext.Initialized = FALSE;
+        g_WskContext.Registered = FALSE;
+    } else if (g_WskContext.Registered) {
+        WskDeregister(&g_WskContext.Registration);
+        g_WskContext.Registered = FALSE;
+    } else return NET_ERROR_NOT_REGISTER;
+
+  return NET_SUCCESS;
 }
 
 net_error_t windows_net_address_parse(const char* str, net_family_t ip_family, net_address_t* addr) {

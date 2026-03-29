@@ -11,6 +11,7 @@ typedef struct WSK_CONTEXT {
     WSK_REGISTRATION Registration;
     WSK_PROVIDER_NPI ProviderNpi;
     BOOLEAN Initialized;
+    BOOLEAN Registered;
 } WSK_CONTEXT, *PWSK_CONTEXT;
 
 extern WSK_CONTEXT g_WskContext;
