@@ -144,6 +144,7 @@ net_error_t windows_net_address_to_string (const net_address_t* addr, char* buff
     return convert_status_from_windows(status);
 }
 
+// Данная функция требует тестов!!!!
 net_error_t windows_net_socket_last_error(net_socket_t *sock, net_error_t error) {
     if (!sock)
         return NET_ERROR_INVALID_PARAM;
@@ -153,6 +154,7 @@ net_error_t windows_net_socket_last_error(net_socket_t *sock, net_error_t error)
     return NET_SUCCESS;
 }
 
+// Данная функция требует тестов!!!!
 net_error_t windows_net_socket_last_platform_error(net_socket_t* sock, const void* platform_error) {
     if (!sock)
         return NET_ERROR_INVALID_PARAM;
