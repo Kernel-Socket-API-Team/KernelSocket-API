@@ -1,5 +1,85 @@
 #include "windows_common.h"
 
+net_error_t windows_net_register () {
+
+    // Если уже инициализирован, просто возвращаем успех
+  if (g_WskContext.Registered)
+        return NET_SUCCESS;
+    
+    NTSTATUS Status;
+
+    // Регистрация
+    WSK_CLIENT_NPI WskClientNpi;
+    WskClientNpi.ClientContext = &g_WskContext;
+    WskClientNpi.Dispatch = &WskAppDispatch;
+    
+    Status = WskRegister(&WskClientNpi, &g_WskContext.Registration);
+    if (!NT_SUCCESS(Status))
+        return convert_status_from_windows(Status);
+
+    g_WskContext.Registered = TRUE;
+
+    return NET_SUCCESS;
+}
+
+net_error_t windows_net_activate (const size_t limitMS) {
+
+    net_error_t lib_current_status = windows_net_is_ready();
+    if (lib_current_status != NET_ERROR_NOT_INITIALIZED)
+        return lib_current_status;
+
+    ULONG TimeoutMs;
+    NTSTATUS Status;
+
+    // Определяем таймаут для WskCaptureProviderNPI
+    if (limitMS == 0) {
+        // Не ждать, проверить сразу
+        TimeoutMs = 0;
+    } else if (limitMS == NET_WAIT_INFINITE) {
+        // Ждать бесконечно
+        TimeoutMs = WSK_INFINITE_WAIT;
+    } else {
+        // Ждать указанное количество миллисекунд
+        TimeoutMs = (ULONG)limitMS;
+    }
+    
+    // Захватываем провайдера (блокирует поток)
+    Status = WskCaptureProviderNPI(
+        &g_WskContext.Registration,
+        TimeoutMs,
+        &g_WskContext.ProviderNpi
+    );
+
+    if (Status == STATUS_SUCCESS) {
+        g_WskContext.Initialized = TRUE;
+        return NET_SUCCESS;
+    } else if (Status == STATUS_TIMEOUT) {
+        return NET_ERROR_TIMEOUT;
+    } else {
+        return convert_status_from_windows(Status);
+    }
+}
+
+net_error_t windows_net_is_ready() {
+    if (!g_WskContext.Registered) return NET_ERROR_NOT_REGISTER;
+    else if (!g_WskContext.Initialized) return NET_ERROR_NOT_INITIALIZED;
+    else return NET_SUCCESS;
+}
+
+net_error_t windows_net_cleanup () {
+    if (g_WskContext.Registered && g_WskContext.Initialized) {
+        WskReleaseProviderNPI(&g_WskContext.Registration);
+        WskDeregister(&g_WskContext.Registration);
+        g_WskContext.Initialized = FALSE;
+        g_WskContext.Registered = FALSE;
+    } else if (g_WskContext.Registered) {
+        WskDeregister(&g_WskContext.Registration);
+        g_WskContext.Registered = FALSE;
+    } else return NET_ERROR_NOT_REGISTER;
+
+  return NET_SUCCESS;
+}
+
 net_error_t windows_net_address_parse(const char* str, net_family_t ip_family, net_address_t* addr) {
     if (!str || !addr) return NET_ERROR_INVALID_PARAM;
     
@@ -64,15 +144,27 @@ net_error_t windows_net_address_to_string (const net_address_t* addr, char* buff
     return convert_status_from_windows(status);
 }
 
+// Данная функция требует тестов!!!!
+net_error_t windows_net_socket_last_error(net_socket_t *sock, net_error_t error) {
+    if (!sock)
+        return NET_ERROR_INVALID_PARAM;
+    
+    error = sock->error;
+
+    return NET_SUCCESS;
+}
+
+// Данная функция требует тестов!!!!
+net_error_t windows_net_socket_last_platform_error(net_socket_t* sock, const void* platform_error) {
+    if (!sock)
+        return NET_ERROR_INVALID_PARAM;
+
+    platform_error = sock->last_error;
+
+    return NET_SUCCESS;
+}
+
 // Sttubs
-net_error_t windows_net_initialize () {
-    return (net_error_t)0;
-}
-
-net_error_t windows_net_cleanup () {
-    return (net_error_t)0;
-}
-
 net_error_t windows_net_socket_create (net_family_t s, net_protocol_t ss, int sss, net_socket_t* ssss) {
     s = 0;
     ss = 0;
@@ -186,12 +278,6 @@ net_error_t windows_net_socket_can_write (net_socket_t* s, int ss, int* sss) {
     s = 0;
     ss = 0;
     sss = 0;
-    return (net_error_t)0;
-}
-
-net_error_t windows_net_socket_last_error (net_socket_t* s, const char* ss) {
-    s = 0;
-    ss = 0;
     return (net_error_t)0;
 }
 

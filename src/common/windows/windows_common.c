@@ -1,5 +1,7 @@
 #include "windows_common.h"
 
+WSK_CONTEXT g_WskContext = {0}; 
+
 net_error_t convert_status_from_windows(NTSTATUS ntstatus) {
     if (NT_SUCCESS(ntstatus)) {
         return NET_SUCCESS;

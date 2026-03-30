@@ -48,15 +48,16 @@ typedef BOOLEAN bool;
 // Коды возврата
 typedef enum {
     NET_ERROR_NOT_INITIALIZED = 0,      // Библиотека не инициализирована
-    NET_ERROR_INVALID_VTABLE = -1,      // Некорректная виртуальная таблица
+    NET_ERROR_NOT_REGISTER = -1,
+    NET_ERROR_INVALID_VTABLE = -2,      // Некорректная виртуальная таблица
     
-    NET_SUCCESS = -2,                   // Успешная работа функции
-    NET_ERROR_NO_MEMORY = -3,           // Ошибка работы с памятью
-    NET_ERROR_ACCESS_DENIED = -4,       // Ошибка прав доступа
-    NET_ERROR_TIMEOUT = -5,             // Превышено время ожидания операции
-    NET_ERROR_BUFFER_TOO_SMALL = -6,    // Размер буфера слишком малл
-    NET_ERROR_INVALID_PARAM = -7,       // Неправильные параметры
-    NET_ERROR_GENERIC = -8,             // Общая (неизвестная) ошибка
+    NET_SUCCESS = -3,                   // Успешная работа функции
+    NET_ERROR_NO_MEMORY = -4,           // Ошибка работы с памятью
+    NET_ERROR_ACCESS_DENIED = -5,       // Ошибка прав доступа
+    NET_ERROR_TIMEOUT = -6,             // Превышено время ожидания операции
+    NET_ERROR_BUFFER_TOO_SMALL = -7,    // Размер буфера слишком малл
+    NET_ERROR_INVALID_PARAM = -8,       // Неправильные параметры
+    NET_ERROR_GENERIC = -9,             // Общая (неизвестная) ошибка
 	/* Количество кодов возрастет в дальнейшем, их необходимость 
 	важно обсудить с разработчиками */
 } net_error_t;
@@ -121,6 +122,9 @@ typedef struct net_socket_options {
 // Универсальная длина буффера для перевода адреса в строкове представление
 #define NET_ADDRSTRLEN 54
 
+// Бесконечное ожидание загрузки
+#define NET_WAIT_INFINITE ((size_t)-1)
+
 /* 
  * ======================================
  * Основные функции API
@@ -130,7 +134,17 @@ typedef struct net_socket_options {
 // ----- Инициализация и завершение работы -----
 
 // Инициализация библиотеки (вызывается один раз при старте)
-net_error_t net_initialize(void);
+net_error_t net_register(void);
+
+// Проверяем готовность библиотеки (вызывается в рабочем потоке)
+// При передаче 0 ждем до момента инициализации (эмитация INFINITY)
+// NET_SUCCESS в случае успеха и NET_ERROR_TIMEOUT в противном случае
+net_error_t net_activate(const size_t limitMS);
+
+// Проверяем готовность библиотеки к использованию
+// вовзращает NET_SUCCESS в случае успешной инициализации и
+// возвращает NET_ERROR_NOT_INITIALIZED
+net_error_t net_is_ready(void);
 
 // Завершение работы библиотеки (освобождение ресурсов)
 net_error_t net_cleanup(void);
@@ -163,20 +177,6 @@ net_error_t net_socket_bind(net_socket_t* sock, const net_address_t* addr);
 // Установка соединения (для TCP-клиентов)
 net_error_t net_socket_connect(net_socket_t* sock, const net_address_t* addr);
 
-/*
- * Перевод сокета в режим прослушивания (для TCP-сервера)
- * backlog - Максимальная длина очереди ожидающих соединений
- */
-net_error_t net_socket_listen(net_socket_t* sock, int backlog);
-
-/*
- * Принятие входящего соединения (для TCP-сервера)
- * sock - Слушающий сокет
- * client_addr [out] - Адрес клиента (может быть NULL)
- * socketListen - Новый сокет для общения с клиентом или NULL при ошибке
- */
-net_error_t net_socket_accept(net_socket_t* sock, net_address_t* client_addr, net_socket_t* socket_listen);
-
 // ----- Отправка и прием данных -----
 
 /*
@@ -187,9 +187,6 @@ net_error_t net_socket_accept(net_socket_t* sock, net_address_t* client_addr, ne
  */
 net_error_t net_socket_send(net_socket_t* sock, const void* data, size_t size, size_t* sent);
 
-// Отправка данных с указанием адреса назначения (для UDP)
-net_error_t net_socket_send_to(net_socket_t* sock, const void* data, size_t size, const net_address_t* dest_addr, size_t* sent);
-
 /*
  * Прием данных (для TCP и UDP)
  * buffer - Буфер для приема данных
@@ -197,11 +194,6 @@ net_error_t net_socket_send_to(net_socket_t* sock, const void* data, size_t size
  * received [out] - Количество реально принятых байт
  */
 net_error_t net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_size, size_t* received);
-
-/*
- * Прием данных с получением адреса отправителя (для UDP)
- */
-net_error_t net_socket_receive_from(net_socket_t* sock, void* buffer, size_t buffer_size, net_address_t* src_addr, size_t* received);
 
 /* ----- Вспомогательные функции ----- */
 
@@ -223,19 +215,13 @@ net_error_t net_socket_get_remote_address(net_socket_t* sock, net_address_t* add
 // Установка неблокирующего режима
 net_error_t net_socket_set_nonblocking(net_socket_t* sock, int enable);
 
-// Проверка, есть ли данные для чтения (опционально)
-net_error_t net_socket_can_read(net_socket_t* sock, int timeout_ms, int* can_read);
-
-// Проверка, можно ли записывать данные (опционально)
-net_error_t net_socket_can_write(net_socket_t* sock, int timeout_ms, int* can_write);
-
 // ----- Функции получения последней ошибки -----
 
-// Получение текстового описания последней ошибки для данного сокета
-net_error_t net_socket_last_error(net_socket_t* sock, const char* str_error);
+// Получение последней ошибки для данного сокета
+net_error_t net_socket_last_error(net_socket_t* sock, net_error_t error);
 
-// Получение текстового описания кода ошибки
-net_error_t net_error_string(net_error_t err, const char* error_description);
+// Получение последние ошибки типа const void*
+net_error_t net_socket_last_platform_error(net_socket_t* sock, const void* platform_error);
 
 #ifdef __cplusplus
 }
