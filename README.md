@@ -24,12 +24,14 @@ KernelSocket предоставляет единый интерфейс для �
 ### Windows
 1. Подключите заголовочный файл:
    ```c
-   #include <kernelsocket.h>
+   #include <ksockapi.h>
    ```
 
 2. Дополнительные каталоги включаемых файлов: KernelSocket-API/include
 
 3. Добавьте KernelSocket-API/compileLibraryForWindows/bin/kernelsocket.lib в  дополнительные зависимости компоновщика
+
+4. Так же в дополнительные зависимости, необходимо явно добавить `netio.lib` для корректной работы библиотеки.
 
 Подробная инструкция: [Использование и сборка библиотеки под Windows](docs/build-docs/windows-build.md).
 
@@ -37,7 +39,7 @@ KernelSocket предоставляет единый интерфейс для �
 
 1. Подключите заголовочный файл:
    ```c
-   #include <kernelsocket.h>
+   #include <ksockapi.h>
    ```
 2. В Makefile добавьте пути к заголовкам и исходникам библиотеки:
     ```makefile

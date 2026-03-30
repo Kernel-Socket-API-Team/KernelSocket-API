@@ -35,7 +35,7 @@ net_error_t windows_net_activate (const size_t limitMS) {
     if (limitMS == 0) {
         // Не ждать, проверить сразу
         TimeoutMs = 0;
-    } else if (limitMS == (size_t)-1) {  // INFINITE
+    } else if (limitMS == NET_WAIT_INFINITE) {
         // Ждать бесконечно
         TimeoutMs = WSK_INFINITE_WAIT;
     } else {
