@@ -113,6 +113,24 @@ net_error_t windows_net_address_parse(const char* str, net_family_t ip_family, n
     return convert_status_from_windows(status);
 }
 
+net_error_t windows_net_htons(uint16_t hostshort, uint16_t* netshort) {
+    if (!netshort) 
+        return NET_ERROR_INVALID_PARAM;
+
+    *netshort = RtlUshortByteSwap(hostshort);
+
+    return NET_SUCCESS;
+}
+
+net_error_t windows_net_ntohs(uint16_t netshort, uint16_t* hostshort) {
+    if (!hostshort) 
+        return NET_ERROR_INVALID_PARAM;
+
+    *hostshort = RtlUshortByteSwap(netshort);
+
+    return NET_SUCCESS;
+}
+
 net_error_t windows_net_address_to_string (const net_address_t* addr, char* buffer, size_t buffer_size, bool include_port) {
     
     // Проверка валидности входных параметров

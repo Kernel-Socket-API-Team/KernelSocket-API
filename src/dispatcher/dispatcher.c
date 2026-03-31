@@ -91,32 +91,11 @@ net_error_t net_socket_connect(net_socket_t* sock, const net_address_t* addr) {
         return vtable->bind_net_socket_connect(sock, addr);
 }
 
-net_error_t net_socket_listen(net_socket_t* sock, int backlog) {
-    if (!vtable || !vtable->bind_net_socket_listen)
-        return NET_ERROR_INVALID_VTABLE;
-    else
-        return vtable->bind_net_socket_listen(sock, backlog);
-}
-
-net_error_t net_socket_accept(net_socket_t* sock, net_address_t* client_addr, net_socket_t* socket_listen) {
-    if (!vtable || !vtable->bind_net_socket_accept)
-        return NET_ERROR_INVALID_VTABLE;
-    else
-        return vtable->bind_net_socket_accept(sock, client_addr, socket_listen);
-}
-
 net_error_t net_socket_send(net_socket_t* sock, const void* data, size_t size, size_t* sent) {
     if (!vtable || !vtable->bind_net_socket_send)
         return NET_ERROR_INVALID_VTABLE;
     else
         return vtable->bind_net_socket_send(sock, data, size, sent);
-}
-
-net_error_t net_socket_send_to(net_socket_t* sock, const void* data, size_t size, const net_address_t* dest_addr, size_t* sent) {
-    if (!vtable || !vtable->bind_net_socket_send_to)
-        return NET_ERROR_INVALID_VTABLE;
-    else
-        return vtable->bind_net_socket_send_to(sock, data, size, dest_addr, sent);
 }
 
 net_error_t net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_size, size_t* received) {
@@ -126,18 +105,25 @@ net_error_t net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_s
         return vtable->bind_net_socket_receive(sock, buffer, buffer_size, received);
 }
 
-net_error_t net_socket_receive_from(net_socket_t* sock, void* buffer, size_t buffer_size, net_address_t* src_addr, size_t* received) {
-    if (!vtable || !vtable->bind_net_socket_receive_from)
-        return NET_ERROR_INVALID_VTABLE;
-    else
-        return vtable->bind_net_socket_receive_from(sock, buffer, buffer_size, src_addr, received);
-}
-
 net_error_t net_address_parse(const char* str, net_family_t ip_family, net_address_t* addr) {
     if (!vtable || !vtable->bind_net_address_parse)
         return NET_ERROR_INVALID_VTABLE;
     else
         return vtable->bind_net_address_parse(str, ip_family, addr);
+}
+
+net_error_t net_htons(uint16_t hostshort, uint16_t* netshort) {
+    if (!vtable || !vtable->bind_net_htons)
+        return NET_ERROR_INVALID_VTABLE;
+    else
+        return vtable->bind_net_htons(hostshort, netshort);
+}
+
+net_error_t net_ntohs(uint16_t netshort, uint16_t* hostshort) {
+    if (!vtable || !vtable->bind_net_ntohs)
+        return NET_ERROR_INVALID_VTABLE;
+    else
+        return vtable->bind_net_ntohs(netshort, hostshort);
 }
 
 net_error_t net_address_to_string(const net_address_t* addr, char* buffer, size_t buffer_size, bool include_port) {
@@ -166,20 +152,6 @@ net_error_t net_socket_set_nonblocking(net_socket_t* sock, int enable) {
         return NET_ERROR_INVALID_VTABLE;
     else
         return vtable->bind_net_socket_set_nonblocking(sock, enable);
-}
-
-net_error_t net_socket_can_read(net_socket_t* sock, int timeout_ms, int* can_read) {
-    if (!vtable || !vtable->bind_net_socket_can_read)
-        return NET_ERROR_INVALID_VTABLE;
-    else
-        return vtable->bind_net_socket_can_read(sock, timeout_ms, can_read);
-}
-
-net_error_t net_socket_can_write(net_socket_t* sock, int timeout_ms, int* can_write) {
-    if (!vtable || !vtable->bind_net_socket_can_write)
-        return NET_ERROR_INVALID_VTABLE;
-    else
-        return vtable->bind_net_socket_can_write(sock, timeout_ms, can_write);
 }
 
 net_error_t net_socket_last_error(net_socket_t* sock, net_error_t error) {
