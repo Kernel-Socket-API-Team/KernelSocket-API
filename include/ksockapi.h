@@ -203,6 +203,12 @@ net_error_t net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_s
  */
 net_error_t net_address_parse(const char* str, net_family_t ip_family, net_address_t* addr);
 
+// Преобразование 16-битного значения (порт) из хостового в сетевой порядок
+net_error_t net_htons(uint16_t hostshort, uint16_t* netshort);
+
+// Преобразование 16-битного значения (порт) из сетевого в хостовой порядок
+net_error_t net_ntohs(uint16_t netshort, uint16_t* hostshort);
+
 // Преобразование структуры net_address_t в строку
 net_error_t net_address_to_string(const net_address_t* addr, char* buffer, size_t buffer_size, bool include_port);
 
