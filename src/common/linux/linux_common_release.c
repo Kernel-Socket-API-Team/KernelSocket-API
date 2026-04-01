@@ -1,154 +1,21 @@
 #include "linux_common.h"
 
-// Sttubs
-net_error_t linux_net_initialize () {
-    printk(KERN_INFO "linux_net_initialize is work!\n");
-    return (net_error_t)0;
-}
+net_error_t linux_net_register ();
 
-net_error_t linux_net_cleanup () {
-    return (net_error_t)0;
-}
+net_error_t linux_net_activate (const size_t limitMS);
 
-net_error_t linux_net_socket_create (net_family_t s, net_protocol_t ss, int sss, net_socket_t* ssss) {
-    s = (net_family_t)0;
-    ss = (net_protocol_t)0;
-    sss = 0;
-    ssss = 0;
-    return (net_error_t)0;
-}
+net_error_t linux_net_is_ready();
 
-net_error_t linux_net_socket_close (net_socket_t* s) {
-    s = 0;
-    return (net_error_t)0;
-}
+net_error_t linux_net_cleanup();
 
-net_error_t linux_net_socket_set_options (net_socket_t* s, const net_socket_options_t* ss) {
-    s = 0;
-    ss = 0;
-    return (net_error_t)0;
-}
+net_error_t linux_net_address_parse(const char* str, net_family_t ip_family, net_address_t* addr);
 
-net_error_t linux_net_socket_get_options (net_socket_t* s, net_socket_options_t* ss) {
-    s = 0;
-    ss = 0;
-    return (net_error_t)0;
-}
+net_error_t linux_net_htons(uint16_t hostshort, uint16_t* netshort);
 
-net_error_t linux_net_socket_bind (net_socket_t* s, const net_address_t* ss) {
-    s = 0;
-    ss = 0;
-    return (net_error_t)0;
-}
+net_error_t linux_net_ntohs(uint16_t netshort, uint16_t* hostshort);
 
-net_error_t linux_net_socket_connect (net_socket_t* s, const net_address_t* ss) {
-    s = 0;
-    ss = 0;
-    return (net_error_t)0;
-}
+net_error_t linux_net_address_to_string (const net_address_t* addr, char* buffer, size_t buffer_size, bool include_port);
 
-net_error_t linux_net_socket_listen (net_socket_t* s, int ss) {
-    s = 0;
-    ss = 0;
-    return (net_error_t)0;
-}
+net_error_t linux_net_socket_last_error(net_socket_t *sock, net_error_t error);
 
-net_error_t linux_net_socket_accept (net_socket_t* s, net_address_t* ss, net_socket_t* sss) {
-    s = 0;
-    ss = 0;
-    sss = 0;
-    return (net_error_t)0;
-}
-
-net_error_t linux_net_socket_send (net_socket_t* s, const void* ss, size_t sss, size_t* ssss) {
-    s = 0;
-    ss = 0;
-    sss = 0;
-    ssss = 0;
-    return (net_error_t)0;
-}
-
-net_error_t linux_net_socket_send_to (net_socket_t* s, const void* ss, size_t sss, const net_address_t* ssss, size_t* sssss) {
-    s = 0;
-    ss = 0;
-    sss = 0;
-    ssss = 0;
-    sssss = 0;
-    return (net_error_t)0;
-}
-
-net_error_t linux_net_socket_receive (net_socket_t* s, void* ss, size_t sss, size_t* ssss) {
-    s = 0;
-    ss = 0;
-    sss = 0;
-    ssss = 0;
-    return (net_error_t)0;
-}
-
-net_error_t linux_net_socket_receive_from (net_socket_t* s, void* ss, size_t sss, net_address_t* ssss, size_t* sssss) {
-    s = 0;
-    ss = 0;
-    sss = 0;
-    ssss = 0;
-    sssss = 0;
-    return (net_error_t)0;
-}
-
-net_error_t linux_net_address_parse(const char* s, net_family_t ss, net_address_t* sss) {
-    s = 0;
-    ss = (net_family_t)0;
-    sss = 0;
-    return (net_error_t)0;
-}
-
-net_error_t linux_net_address_to_string (const net_address_t* s, char* ss, size_t sss, bool ssss) {
-    s = 0;
-    ss = 0;
-    sss = 0;
-    ssss = 0;
-    return (net_error_t)0;
-}
-
-net_error_t linux_net_socket_get_local_address (net_socket_t* s, net_address_t* ss) {
-    s = 0;
-    ss = 0;
-    return (net_error_t)0;
-}
-
-net_error_t linux_net_socket_get_remote_address (net_socket_t* s, net_address_t* ss) {
-    s = 0;
-    ss = 0;
-    return (net_error_t)0;
-}
-
-net_error_t linux_net_socket_set_nonblocking (net_socket_t* s, int ss) {
-    s = 0;
-    ss = 0;
-    return (net_error_t)0;
-}
-
-net_error_t linux_net_socket_can_read (net_socket_t* s, int ss, int* sss) {
-    s = 0;
-    ss = 0;
-    sss = 0;
-    return (net_error_t)0;
-}
-
-net_error_t linux_net_socket_can_write (net_socket_t* s, int ss, int* sss) {
-    s = 0;
-    ss = 0;
-    sss = 0;
-    return (net_error_t)0;
-}
-
-net_error_t linux_net_socket_last_error (net_socket_t* s, const char* ss) {
-    s = 0;
-    ss = 0;
-    return (net_error_t)0;
-}
-
-net_error_t linux_net_error_string (net_error_t s, const char* ss) {
-    s = (net_error_t)0;
-    ss = 0;
-    return (net_error_t)0;
-}
+net_error_t linux_net_socket_last_platform_error(net_socket_t* sock, const void* platform_error);

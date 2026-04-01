@@ -1,4 +1,4 @@
-#include "../../../include/ksockapi.h"
+#include <ksockapi.h>
 
 VOID DriverUnload(PDRIVER_OBJECT DriverObject) {
   UNREFERENCED_PARAMETER(DriverObject);
