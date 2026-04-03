@@ -58,6 +58,10 @@ typedef enum {
     NET_ERROR_BUFFER_TOO_SMALL = -7,    // Размер буфера слишком малл
     NET_ERROR_INVALID_PARAM = -8,       // Неправильные параметры
     NET_ERROR_GENERIC = -9,             // Общая (неизвестная) ошибка
+
+    NET_ERROR_INVALID_STATE = -10,      // Ошибка получения контекста
+    NET_ERROR_INVALID_PROTOCOL = -11,   // Передача не того протокола в функцию
+
 	/* Количество кодов возрастет в дальнейшем, их необходимость 
 	важно обсудить с разработчиками */
 } net_error_t;
@@ -76,7 +80,7 @@ typedef enum {
 
 // Типы адресов (IPv4/IPv6)
 typedef enum {
-    NET_AF_INET4 = 2,   /* IPv4 */
+    NET_AF_INET4 = 2,  /* IPv4 */
     NET_AF_INET6 = 10  /* IPv6 */
 } net_family_t;
 
@@ -188,12 +192,19 @@ net_error_t net_socket_connect(net_socket_t* sock, const net_address_t* addr);
 net_error_t net_socket_send(net_socket_t* sock, const void* data, size_t size, size_t* sent);
 
 /*
- * Прием данных (для TCP и UDP)
- * buffer - Буфер для приема данных
+ * sock        - Сокет (TCP listen, TCP connected или UDP)
+ * peer_sock   - [OUT] Для TCP listen: новый клиентский сокет
+ *                     Для TCP connected: NULL или тот же сокет
+ *                     Для UDP: NULL
+ * buffer      - [OUT] Буфер для данных
  * buffer_size - Размер буфера
- * received [out] - Количество реально принятых байт
+ * from_addr   - [OUT] Адрес отправителя (для UDP) или клиента (для TCP)
+ * received    - [OUT] Количество реально принятых байт
  */
-net_error_t net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_size, size_t* received);
+net_error_t net_socket_receive(net_socket_t* sock, net_socket_t** peer_sock, void* buffer, size_t buffer_size, net_address_t* from_addr, size_t* received);
+
+// Переводит TCP сокет в режим прослушивания входящих соединений
+net_error_t net_socket_listen(net_socket_t* sock, int backlog);
 
 /* ----- Вспомогательные функции ----- */
 

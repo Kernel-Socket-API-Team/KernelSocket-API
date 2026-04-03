@@ -13,12 +13,26 @@ const net_vtable_dispatcher* vtable =
 
 // Реализация сокета (скрыта от пользователя)
 struct net_socket {
+    net_protocol_t protocol;        // Тип транспортного протокола (TCP/UDP)
     net_address_t addr;             // Настройки адреса сокета
     net_socket_options_t options;   // Настройки различных опций сокета
     net_error_t error;              // Храним последнюю ошибку, которая возникла при работе с сокетом
     
     void* last_error;               // Храним указатель на последнюю ошибку в контексте конкретной ОС (NTSTATUS ...)
+
+    uint8_t state;                  // Состояние сокета
+
+    void* context;                  // Платформозависимый контекст
 };
+
+typedef enum {
+    SOCK_STATE_INIT        = 0,  // Только создан
+    SOCK_STATE_BOUND       = 1,  // Привязан к адресу
+    SOCK_STATE_LISTENING   = 2,  // TCP в режиме прослушивания
+    SOCK_STATE_CONNECTED   = 3,  // TCP подключен (клиент или принятый)
+    SOCK_STATE_UDP         = 4   // UDP сокет
+} net_socket_state_t;
+
 
 // Безопастная маршрутизация интерфейса на платформенное определение
 net_error_t net_register(void) {
