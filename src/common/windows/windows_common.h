@@ -19,11 +19,15 @@ typedef struct WSK_CONTEXT {
 extern WSK_CONTEXT g_WskContext;
 
 /* Диспетчеризация WSK клиента */
+/*
+ВРЕМЕННО ДЛЯ ТЕСТОВ!!!!
 const WSK_CLIENT_DISPATCH WskAppDispatch = {
     MAKE_WSK_VERSION(1, 0),     // Версия WSK 1.0
     0,                          // Зарезервировано
     NULL                        // ClientCallback (не используется)
-};
+};*/
+
+extern const WSK_CLIENT_DISPATCH WskAppDispatch;
 
 /* 
     Функция конвертации ошибок Windows под интерфес ошибок,

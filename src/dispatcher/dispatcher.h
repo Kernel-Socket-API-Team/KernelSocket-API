@@ -15,7 +15,7 @@ typedef struct {
     net_error_t     (*bind_net_socket_bind)                 (net_socket_t*, const net_address_t*);
     net_error_t     (*bind_net_socket_connect)              (net_socket_t*, const net_address_t*);
     net_error_t     (*bind_net_socket_send)                 (net_socket_t*, const void*, size_t, size_t*);
-    net_error_t     (*bind_net_socket_receive)              (net_socket_t*, void*, size_t, size_t*);
+    net_error_t     (*bind_net_socket_receive)              (net_socket_t*, void*, size_t, net_address_t*, size_t*);
     net_error_t     (*bind_net_address_parse)               (const char*, net_family_t, net_address_t*);
     net_error_t     (*bind_net_htons)                       (uint16_t, uint16_t*);
     net_error_t     (*bind_net_ntohs)                       (uint16_t, uint16_t*);    

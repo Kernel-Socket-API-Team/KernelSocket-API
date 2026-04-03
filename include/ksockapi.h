@@ -129,6 +129,20 @@ typedef struct net_socket_options {
 // Бесконечное ожидание загрузки
 #define NET_WAIT_INFINITE ((size_t)-1)
 
+// ВРМЕННО ДЛЯ ТЕСТОВ!!!
+struct net_socket {
+    net_protocol_t protocol;        // Тип транспортного протокола (TCP/UDP)
+    net_address_t addr;             // Настройки адреса сокета
+    net_socket_options_t options;   // Настройки различных опций сокета
+    net_error_t error;              // Храним последнюю ошибку, которая возникла при работе с сокетом
+    
+    void* last_error;               // Храним указатель на последнюю ошибку в контексте конкретной ОС (NTSTATUS ...)
+
+    uint8_t state;                  // Состояние сокета
+
+    void* context;                  // Платформозависимый контекст
+};
+
 /* 
  * ======================================
  * Основные функции API
@@ -201,10 +215,7 @@ net_error_t net_socket_send(net_socket_t* sock, const void* data, size_t size, s
  * from_addr   - [OUT] Адрес отправителя (для UDP) или клиента (для TCP)
  * received    - [OUT] Количество реально принятых байт
  */
-net_error_t net_socket_receive(net_socket_t* sock, net_socket_t** peer_sock, void* buffer, size_t buffer_size, net_address_t* from_addr, size_t* received);
-
-// Переводит TCP сокет в режим прослушивания входящих соединений
-net_error_t net_socket_listen(net_socket_t* sock, int backlog);
+net_error_t net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_size, net_address_t* from_addr, size_t* received);
 
 /* ----- Вспомогательные функции ----- */
 

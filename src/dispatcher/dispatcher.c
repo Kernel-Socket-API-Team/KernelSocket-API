@@ -11,6 +11,7 @@ const net_vtable_dispatcher* vtable =
     &linux_vtable;
 #endif
 
+/*
 // Реализация сокета (скрыта от пользователя)
 struct net_socket {
     net_protocol_t protocol;        // Тип транспортного протокола (TCP/UDP)
@@ -23,7 +24,7 @@ struct net_socket {
     uint8_t state;                  // Состояние сокета
 
     void* context;                  // Платформозависимый контекст
-};
+};*/
 
 typedef enum {
     SOCK_STATE_INIT        = 0,  // Только создан
@@ -112,11 +113,11 @@ net_error_t net_socket_send(net_socket_t* sock, const void* data, size_t size, s
         return vtable->bind_net_socket_send(sock, data, size, sent);
 }
 
-net_error_t net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_size, size_t* received) {
+net_error_t net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_size, net_address_t* from_addr, size_t* received) {
     if (!vtable || !vtable->bind_net_socket_receive)
         return NET_ERROR_INVALID_VTABLE;
     else
-        return vtable->bind_net_socket_receive(sock, buffer, buffer_size, received);
+        return vtable->bind_net_socket_receive(sock, buffer, buffer_size, from_addr, received);
 }
 
 net_error_t net_address_parse(const char* str, net_family_t ip_family, net_address_t* addr) {
