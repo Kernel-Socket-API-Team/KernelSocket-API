@@ -8,7 +8,7 @@ typedef struct {
     net_error_t     (*bind_net_activate)                    (const size_t);
     net_error_t     (*bind_net_is_ready)                    (void);
     net_error_t     (*bind_net_cleanup)                     (void);
-    net_error_t     (*bind_net_socket_create)               (net_family_t, net_protocol_t , int, net_socket_t*);
+    net_error_t     (*bind_net_socket_create)               (net_family_t, net_protocol_t, net_socket_flags_t, net_socket_t**);
     net_error_t     (*bind_net_socket_close)                (net_socket_t*);
     net_error_t     (*bind_net_socket_set_options)          (net_socket_t*, const net_socket_options_t*);
     net_error_t     (*bind_net_socket_get_options)          (net_socket_t*, net_socket_options_t*);
@@ -16,6 +16,7 @@ typedef struct {
     net_error_t     (*bind_net_socket_connect)              (net_socket_t*, const net_address_t*);
     net_error_t     (*bind_net_socket_send)                 (net_socket_t*, const void*, size_t, size_t*);
     net_error_t     (*bind_net_socket_receive)              (net_socket_t*, void*, size_t, net_address_t*, size_t*);
+    net_error_t     (*bind_net_socket_accept)               (net_socket_t*, net_socket_t**);
     net_error_t     (*bind_net_address_parse)               (const char*, net_family_t, net_address_t*);
     net_error_t     (*bind_net_htons)                       (uint16_t, uint16_t*);
     net_error_t     (*bind_net_ntohs)                       (uint16_t, uint16_t*);    

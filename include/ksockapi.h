@@ -86,12 +86,11 @@ typedef enum {
 
 // Флаги для неблокирующих операций
 typedef enum {
-    NET_FLAG_NONE = 0,
-    NET_FLAG_NONBLOCK = 1,      /* Неблокирующий режим */
-    NET_FLAG_REUSEADDR = 2,     /* Переиспользовать адрес */
-    NET_FLAG_BROADCAST = 4,     /* Разрешить широковещательные пакеты (UDP) */
-    NET_FLAG_KEEPALIVE = 8      /* Поддерживать соединение активным (TCP) */
-} net_flags_t;
+    NET_SOCK_FLAG_NONE      = 0,
+    NET_SOCK_FLAG_LISTENING = 2,   // Слушающий сокет (TCP сервер)
+    NET_SOCK_FLAG_REUSEADDR = 3,   // Переиспользовать адрес
+    NET_SOCK_FLAG_NONBLOCK  = 4,    // Неблокирующий режим
+} net_socket_flags_t;
 
 /* 
  * ======================================
@@ -129,20 +128,6 @@ typedef struct net_socket_options {
 // Бесконечное ожидание загрузки
 #define NET_WAIT_INFINITE ((size_t)-1)
 
-// ВРМЕННО ДЛЯ ТЕСТОВ!!!
-struct net_socket {
-    net_protocol_t protocol;        // Тип транспортного протокола (TCP/UDP)
-    net_address_t addr;             // Настройки адреса сокета
-    net_socket_options_t options;   // Настройки различных опций сокета
-    net_error_t error;              // Храним последнюю ошибку, которая возникла при работе с сокетом
-    
-    void* last_error;               // Храним указатель на последнюю ошибку в контексте конкретной ОС (NTSTATUS ...)
-
-    uint8_t state;                  // Состояние сокета
-
-    void* context;                  // Платформозависимый контекст
-};
-
 /* 
  * ======================================
  * Основные функции API
@@ -176,7 +161,7 @@ net_error_t net_cleanup(void);
  * flags - Флаги (NET_FLAG_*)
  * socketOut - Указатель на созданный сокет
  */
-net_error_t net_socket_create(net_family_t family, net_protocol_t protocol, int flags, net_socket_t* socketOut);
+net_error_t net_socket_create(net_family_t family, net_protocol_t protocol, net_socket_flags_t flags, net_socket_t** socketOut);
 
 // Закрытие сокета и освобождение ресурсов
 net_error_t net_socket_close(net_socket_t* sock);
@@ -216,6 +201,9 @@ net_error_t net_socket_send(net_socket_t* sock, const void* data, size_t size, s
  * received    - [OUT] Количество реально принятых байт
  */
 net_error_t net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_size, net_address_t* from_addr, size_t* received);
+
+// Вспомогательная функция для tcp сервера
+net_error_t net_socket_accept(net_socket_t* server, net_socket_t** client_out);
 
 /* ----- Вспомогательные функции ----- */
 

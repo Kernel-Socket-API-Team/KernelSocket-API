@@ -14,6 +14,7 @@ const net_vtable_dispatcher windows_vtable = {
     .bind_net_socket_connect                = windows_net_socket_connect,
     .bind_net_socket_send                   = windows_net_socket_send,
     .bind_net_socket_receive                = windows_net_socket_receive,
+    .bind_net_socket_accept                 = windows_net_socket_accept,
     .bind_net_address_parse                 = windows_net_address_parse,
     .bind_net_htons                         = windows_net_htons,
     .bind_net_ntohs                         = windows_net_ntohs,

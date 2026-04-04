@@ -11,7 +11,6 @@ const net_vtable_dispatcher* vtable =
     &linux_vtable;
 #endif
 
-/*
 // Реализация сокета (скрыта от пользователя)
 struct net_socket {
     net_protocol_t protocol;        // Тип транспортного протокола (TCP/UDP)
@@ -24,15 +23,7 @@ struct net_socket {
     uint8_t state;                  // Состояние сокета
 
     void* context;                  // Платформозависимый контекст
-};*/
-
-typedef enum {
-    SOCK_STATE_INIT        = 0,  // Только создан
-    SOCK_STATE_BOUND       = 1,  // Привязан к адресу
-    SOCK_STATE_LISTENING   = 2,  // TCP в режиме прослушивания
-    SOCK_STATE_CONNECTED   = 3,  // TCP подключен (клиент или принятый)
-    SOCK_STATE_UDP         = 4   // UDP сокет
-} net_socket_state_t;
+};
 
 
 // Безопастная маршрутизация интерфейса на платформенное определение
@@ -64,11 +55,11 @@ net_error_t net_cleanup(void) {
         return vtable->bind_net_cleanup();
 }
 
-net_error_t net_socket_create(net_family_t family, net_protocol_t protocol, int flags, net_socket_t* socket_out) {
+net_error_t net_socket_create(net_family_t family, net_protocol_t protocol, net_socket_flags_t flags, net_socket_t** socketOut) {
     if (!vtable || !vtable->bind_net_socket_create)
         return NET_ERROR_INVALID_VTABLE;
     else
-        return vtable->bind_net_socket_create(family, protocol, flags, socket_out);
+        return vtable->bind_net_socket_create(family, protocol, flags, socketOut);
 }
 
 net_error_t net_socket_close(net_socket_t* sock) {
@@ -118,6 +109,13 @@ net_error_t net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_s
         return NET_ERROR_INVALID_VTABLE;
     else
         return vtable->bind_net_socket_receive(sock, buffer, buffer_size, from_addr, received);
+}
+
+net_error_t net_socket_accept(net_socket_t* server, net_socket_t** client_out) {
+    if (!vtable || !vtable->bind_net_socket_accept)
+        return NET_ERROR_INVALID_VTABLE;
+    else
+        return vtable->bind_net_socket_accept(server, client_out);
 }
 
 net_error_t net_address_parse(const char* str, net_family_t ip_family, net_address_t* addr) {
