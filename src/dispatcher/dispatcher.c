@@ -13,12 +13,17 @@ const net_vtable_dispatcher* vtable =
 
 // Реализация сокета (скрыта от пользователя)
 struct net_socket {
+    net_protocol_t protocol;        // Тип транспортного протокола (TCP/UDP)
     net_address_t addr;             // Настройки адреса сокета
-    net_socket_options_t options;   // Настройки различных опций сокета
-    net_error_t error;              // Храним последнюю ошибку, которая возникла при работе с сокетом
     
+    net_error_t error;              // Храним последнюю ошибку, которая возникла при работе с сокетом
     void* last_error;               // Храним указатель на последнюю ошибку в контексте конкретной ОС (NTSTATUS ...)
+
+    net_socket_type_t type;         // Тип сокета
+
+    void* context;                  // Платформозависимый контекст
 };
+
 
 // Безопастная маршрутизация интерфейса на платформенное определение
 net_error_t net_register(void) {
@@ -49,11 +54,11 @@ net_error_t net_cleanup(void) {
         return vtable->bind_net_cleanup();
 }
 
-net_error_t net_socket_create(net_family_t family, net_protocol_t protocol, int flags, net_socket_t* socket_out) {
+net_error_t net_socket_create(net_family_t family, net_protocol_t protocol, net_socket_type_t type, net_socket_t** socketOut) {
     if (!vtable || !vtable->bind_net_socket_create)
         return NET_ERROR_INVALID_VTABLE;
     else
-        return vtable->bind_net_socket_create(family, protocol, flags, socket_out);
+        return vtable->bind_net_socket_create(family, protocol, type, socketOut);
 }
 
 net_error_t net_socket_close(net_socket_t* sock) {
@@ -61,20 +66,6 @@ net_error_t net_socket_close(net_socket_t* sock) {
         return NET_ERROR_INVALID_VTABLE;
     else
         return vtable->bind_net_socket_close(sock);
-}
-
-net_error_t net_socket_set_options(net_socket_t* sock, const net_socket_options_t* opts) {
-    if (!vtable || !vtable->bind_net_socket_set_options)
-        return NET_ERROR_INVALID_VTABLE;
-    else
-        return vtable->bind_net_socket_set_options(sock, opts);
-}
-
-net_error_t net_socket_get_options(net_socket_t* sock, net_socket_options_t* opts) {
-    if (!vtable || !vtable->bind_net_socket_get_options)
-        return NET_ERROR_INVALID_VTABLE;
-    else
-        return vtable->bind_net_socket_get_options(sock, opts);
 }
 
 net_error_t net_socket_bind(net_socket_t* sock, const net_address_t* addr) {
@@ -98,11 +89,18 @@ net_error_t net_socket_send(net_socket_t* sock, const void* data, size_t size, s
         return vtable->bind_net_socket_send(sock, data, size, sent);
 }
 
-net_error_t net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_size, size_t* received) {
+net_error_t net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_size, net_address_t* from_addr, size_t* received) {
     if (!vtable || !vtable->bind_net_socket_receive)
         return NET_ERROR_INVALID_VTABLE;
     else
-        return vtable->bind_net_socket_receive(sock, buffer, buffer_size, received);
+        return vtable->bind_net_socket_receive(sock, buffer, buffer_size, from_addr, received);
+}
+
+net_error_t net_socket_accept(net_socket_t* server, net_socket_t** client_out) {
+    if (!vtable || !vtable->bind_net_socket_accept)
+        return NET_ERROR_INVALID_VTABLE;
+    else
+        return vtable->bind_net_socket_accept(server, client_out);
 }
 
 net_error_t net_address_parse(const char* str, net_family_t ip_family, net_address_t* addr) {
@@ -133,35 +131,35 @@ net_error_t net_address_to_string(const net_address_t* addr, char* buffer, size_
         return vtable->bind_net_address_to_string(addr, buffer, buffer_size, include_port);
 }
 
-net_error_t net_socket_get_local_address(net_socket_t* sock, net_address_t* addr) {
-    if (!vtable || !vtable->bind_net_socket_get_local_address)
+net_error_t net_socket_get_address(net_socket_t* sock, net_address_t* addr) {
+    if (!vtable || !vtable->bind_net_socket_get_address)
         return NET_ERROR_INVALID_VTABLE;
     else
-        return vtable->bind_net_socket_get_local_address(sock, addr);
+        return vtable->bind_net_socket_get_address(sock, addr);
 }
 
-net_error_t net_socket_get_remote_address(net_socket_t* sock, net_address_t* addr) {
-    if (!vtable || !vtable->bind_net_socket_get_remote_address)
+net_error_t net_socket_get_type(net_socket_t* sock, net_socket_type_t* type) {
+    if (!vtable || !vtable->bind_net_socket_get_type)
         return NET_ERROR_INVALID_VTABLE;
     else
-        return vtable->bind_net_socket_get_remote_address(sock, addr);
+        return vtable->bind_net_socket_get_type(sock, type);
 }
 
-net_error_t net_socket_set_nonblocking(net_socket_t* sock, int enable) {
-    if (!vtable || !vtable->bind_net_socket_set_nonblocking)
+net_error_t net_socket_get_protocol(net_socket_t* sock, net_protocol_t* protocol) {
+    if (!vtable || !vtable->bind_net_socket_get_protocol)
         return NET_ERROR_INVALID_VTABLE;
     else
-        return vtable->bind_net_socket_set_nonblocking(sock, enable);
+        return vtable->bind_net_socket_get_protocol(sock, protocol);
 }
 
-net_error_t net_socket_last_error(net_socket_t* sock, net_error_t error) {
+net_error_t net_socket_last_error(net_socket_t* sock, net_error_t* error) {
     if (!vtable || !vtable->bind_net_socket_last_error)
         return NET_ERROR_INVALID_VTABLE;
     else
         return vtable->bind_net_socket_last_error(sock, error);
 }
 
-net_error_t net_socket_last_platform_error(net_socket_t* sock, const void* platform_error) {
+net_error_t net_socket_last_platform_error(net_socket_t* sock, const void** platform_error) {
     if (!vtable || !vtable->bind_net_socket_last_platform_error)
         return NET_ERROR_INVALID_VTABLE;
     else
