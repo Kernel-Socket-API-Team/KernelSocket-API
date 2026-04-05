@@ -11,33 +11,63 @@ static NTSTATUS wsk_completion(PDEVICE_OBJECT DeviceObject, PIRP Irp, PVOID Cont
     return STATUS_MORE_PROCESSING_REQUIRED;
 }
 
-net_error_t windows_net_socket_create(net_family_t family, net_protocol_t protocol, net_socket_flags_t flags, net_socket_t** socketOut) {
+net_error_t windows_net_socket_create(net_family_t family, net_protocol_t protocol, net_socket_type_t type, net_socket_t** socketOut) {
+    
+    net_error_t lib_state = windows_net_is_ready();
+    if (lib_state != NET_SUCCESS)
+        return lib_state;
+
+    if (!socketOut) 
+        return NET_ERROR_INVALID_PARAM;
+    
+    if (protocol == NET_PROTO_UDP && type != NET_SOCK_TYPE_UDP) 
+        return NET_ERROR_INVALID_PARAM;
+
+    if (protocol == NET_PROTO_TCP && type == NET_SOCK_TYPE_UDP)
+        return NET_ERROR_INVALID_PARAM;
+    
+    if (type != NET_SOCK_TYPE_TCP_LISTEN && 
+        type != NET_SOCK_TYPE_TCP_CONNECTION && 
+        type != NET_SOCK_TYPE_UDP) 
+        return NET_ERROR_INVALID_PARAM;
+
+        
     NTSTATUS status;
     PWSK_SOCKET wsk_socket;
     PWINDOWS_SOCKET_IMPL impl;
     net_socket_t* sock;
     PIRP irp;
     KEVENT event;
-    
-    if (!socketOut) return NET_ERROR_INVALID_PARAM;
+
+    ULONG wsk_flags = 0;
+
+    switch (type) {
+    case NET_SOCK_TYPE_TCP_LISTEN:
+        wsk_flags = WSK_FLAG_LISTEN_SOCKET;
+        break;
+
+    case NET_SOCK_TYPE_TCP_CONNECTION:
+        wsk_flags = WSK_FLAG_CONNECTION_SOCKET;
+        break;
+
+    case NET_SOCK_TYPE_UDP:
+        wsk_flags = WSK_FLAG_DATAGRAM_SOCKET;
+        break;
+
+    default:
+        return NET_ERROR_INVALID_PARAM;
+    }
     
     // Создаем сокет
     sock = (net_socket_t*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(net_socket_t), 'kcoS');
     if (!sock) return NET_ERROR_NO_MEMORY;
     
     RtlZeroMemory(sock, sizeof(net_socket_t));
-    sock->protocol = protocol;
     
     // Определяем параметры WSK сокета
     USHORT wsk_family = (family == NET_AF_INET4) ? AF_INET : AF_INET6;
     USHORT wsk_type = (protocol == NET_PROTO_TCP) ? SOCK_STREAM : SOCK_DGRAM;
     ULONG wsk_protocol = (protocol == NET_PROTO_TCP) ? IPPROTO_TCP : IPPROTO_UDP;
-    
-    // Флаги WSK
-    ULONG wsk_flags = 0;
-    if (protocol == NET_PROTO_TCP && (flags & NET_SOCK_FLAG_LISTENING)) {
-        wsk_flags |= WSK_FLAG_LISTEN_SOCKET;
-    }
     
     irp = IoAllocateIrp(1, FALSE);
     if (!irp) {
@@ -74,7 +104,7 @@ net_error_t windows_net_socket_create(net_family_t family, net_protocol_t protoc
     } else {
         IoFreeIrp(irp);
         ExFreePool(sock);
-        return NET_ERROR_GENERIC;
+        return convert_status_from_windows(status);
     }
     
     IoFreeIrp(irp);
@@ -89,31 +119,25 @@ net_error_t windows_net_socket_create(net_family_t family, net_protocol_t protoc
     
     RtlZeroMemory(impl, sizeof(WINDOWS_SOCKET_IMPL));
     impl->wsk_socket = wsk_socket;
-    impl->is_listening = (flags & NET_SOCK_FLAG_LISTENING) ? TRUE : FALSE;
     KeInitializeEvent(&impl->completion_event, NotificationEvent, FALSE);
     
+    sock->addr.family = family;
     sock->context = impl;
-    
-    // Устанавливаем состояние сокета
-    if (protocol == NET_PROTO_UDP) {
-        sock->state = SOCK_STATE_UDP;
-    } else if (flags & NET_SOCK_FLAG_LISTENING) {
-        sock->state = SOCK_STATE_LISTENING;
-    } else {
-        sock->state = SOCK_STATE_INIT;
-    }
+    sock->protocol = protocol;
+    sock->type = type;
     
     *socketOut = sock;
     
     return NET_SUCCESS;
 }
 
-net_error_t windows_net_socket_close(net_socket_t* sock)
-{
-    if (!sock) return NET_ERROR_INVALID_PARAM;
+net_error_t windows_net_socket_close(net_socket_t* sock) {
+    if (!sock) 
+        return NET_ERROR_INVALID_PARAM;
     
     PWINDOWS_SOCKET_IMPL impl = (PWINDOWS_SOCKET_IMPL)sock->context;
-    if (!impl || !impl->wsk_socket) return NET_ERROR_INVALID_STATE;
+    if (!impl || !impl->wsk_socket) 
+        return NET_ERROR_INVALID_STATE;
     
     // Сохраняем указатель на wsk_socket перед очисткой
     PWSK_SOCKET wsk = impl->wsk_socket;
@@ -160,24 +184,12 @@ net_error_t windows_net_socket_close(net_socket_t* sock)
     return NET_SUCCESS;
 }
 
-net_error_t windows_net_socket_set_options(net_socket_t* sock, const net_socket_options_t* opts) {
-    sock = 0;
-    opts = 0;
-    return 0;
-}
-
-net_error_t windows_net_socket_get_options(net_socket_t* sock, net_socket_options_t* opts) {
-    sock = 0;
-    opts = 0;
-    return 0;
-}
-
-net_error_t windows_net_socket_bind(net_socket_t* sock, const net_address_t* addr)
-{
+net_error_t windows_net_socket_bind(net_socket_t* sock, const net_address_t* addr) {
     if (!sock || !addr) return NET_ERROR_INVALID_PARAM;
     
     PWINDOWS_SOCKET_IMPL impl = (PWINDOWS_SOCKET_IMPL)sock->context;
-    if (!impl || !impl->wsk_socket) return NET_ERROR_INVALID_STATE;
+    if (!impl || !impl->wsk_socket) 
+        return NET_ERROR_INVALID_STATE;
     
     SOCKADDR_IN local_addr;
     local_addr.sin_family = AF_INET;
@@ -185,23 +197,48 @@ net_error_t windows_net_socket_bind(net_socket_t* sock, const net_address_t* add
     local_addr.sin_addr.s_addr = addr->addr.ipv4;
     
     PIRP irp = IoAllocateIrp(1, FALSE);
-    if (!irp) return NET_ERROR_NO_MEMORY;
+    if (!irp) 
+        return NET_ERROR_NO_MEMORY;
     
     KEVENT event;
     KeInitializeEvent(&event, NotificationEvent, FALSE);
     IoSetCompletionRoutine(irp, wsk_completion, &event, TRUE, TRUE, TRUE);
     
-    NTSTATUS status = ((PWSK_PROVIDER_LISTEN_DISPATCH)impl->wsk_socket->Dispatch)
-                        ->WskBind(impl->wsk_socket, (PSOCKADDR)&local_addr, 0, irp);
+    NTSTATUS status;
+
+    switch (sock->type) {
+
+        case NET_SOCK_TYPE_TCP_LISTEN:
+            status = ((PWSK_PROVIDER_LISTEN_DISPATCH)impl->wsk_socket->Dispatch)
+                ->WskBind(impl->wsk_socket, (PSOCKADDR)&local_addr, 0, irp);
+            break;
+
+        case NET_SOCK_TYPE_TCP_CONNECTION:
+            status = ((PWSK_PROVIDER_CONNECTION_DISPATCH)impl->wsk_socket->Dispatch)
+                ->WskBind(impl->wsk_socket, (PSOCKADDR)&local_addr, 0, irp);
+            break;
+
+        case NET_SOCK_TYPE_UDP:
+            status = ((PWSK_PROVIDER_DATAGRAM_DISPATCH)impl->wsk_socket->Dispatch)
+                ->WskBind(impl->wsk_socket, (PSOCKADDR)&local_addr, 0, irp);
+            break;
+
+        default:
+            IoFreeIrp(irp);
+            return NET_ERROR_INVALID_PARAM;
+    }
     
     if (status == STATUS_PENDING) {
         KeWaitForSingleObject(&event, Executive, KernelMode, FALSE, NULL);
         status = irp->IoStatus.Status;
     }
+
+    if (NT_SUCCESS(status)) 
+        sock->addr = *addr;
     
     IoFreeIrp(irp);
     
-    return NT_SUCCESS(status) ? NET_SUCCESS : NET_ERROR_GENERIC;
+    return NT_SUCCESS(status) ? NET_SUCCESS : convert_status_from_windows(status);
 }
 
 net_error_t windows_net_socket_connect(net_socket_t* sock, const net_address_t* addr) {
@@ -218,44 +255,55 @@ net_error_t windows_net_socket_send(net_socket_t* sock, const void* data, size_t
     return 0;
 }
 
-net_error_t windows_net_socket_accept(net_socket_t* server, net_socket_t** client_out)
-{
+net_error_t windows_net_socket_accept(net_socket_t* server, net_socket_t** client_out) {
+    // Проверка параметров
+    if (!server || !client_out) 
+        return NET_ERROR_INVALID_PARAM;
+    
     PWINDOWS_SOCKET_IMPL impl = (PWINDOWS_SOCKET_IMPL)server->context;
-    if (!impl) return NET_ERROR_INVALID_STATE;
-    if (!impl->is_listening) return NET_ERROR_INVALID_STATE;
-    if (!impl->wsk_socket) return NET_ERROR_INVALID_STATE;
-    if (!impl->wsk_socket->Dispatch) return NET_ERROR_INVALID_VTABLE;
+    if (!impl) 
+        return NET_ERROR_INVALID_STATE;
+    
+    // Проверка типа сокета
+    if (server->type != NET_SOCK_TYPE_TCP_LISTEN) 
+        return NET_ERROR_INVALID_PROTOCOL;
+    
+    if (!impl->wsk_socket) 
+        return NET_ERROR_INVALID_STATE;
+    
+    if (!impl->wsk_socket->Dispatch) 
+        return NET_ERROR_INVALID_VTABLE;
     
     NTSTATUS status;
     KEVENT event;
     PIRP irp;
     PWSK_SOCKET newClient = NULL;
-
+    
     // Выделяем память под клиентский сокет
     net_socket_t* client = (net_socket_t*)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(net_socket_t), 'kcoS');
-    if (!client) return NET_ERROR_NO_MEMORY;
+    if (!client) 
+        return NET_ERROR_NO_MEMORY;
     
     RtlZeroMemory(client, sizeof(net_socket_t));
     
     irp = IoAllocateIrp(1, FALSE);
     if (!irp) {
-        DbgPrint("[ACCEPT] No IRP\n");
+        ExFreePool(client);
         return NET_ERROR_NO_MEMORY;
     }
     
     KeInitializeEvent(&event, NotificationEvent, FALSE);
     IoSetCompletionRoutine(irp, wsk_completion, &event, TRUE, TRUE, TRUE);
     
-    // Вызов WskAccept
     status = ((PWSK_PROVIDER_LISTEN_DISPATCH)impl->wsk_socket->Dispatch)
                 ->WskAccept(
-                    impl->wsk_socket,      // ListenSocket
-                    0,                     // Flags (зарезервирован, всегда 0)
-                    NULL,                  // AcceptSocketContext
-                    NULL,                  // AcceptSocketDispatch
-                    NULL,                  // LocalAddress (можно NULL)
-                    NULL,                  // RemoteAddress (можно NULL)
-                    irp                    // Irp
+                    impl->wsk_socket,
+                    0,
+                    NULL,
+                    NULL,
+                    NULL,
+                    NULL,
+                    irp
                 );
     
     if (status == STATUS_PENDING) {
@@ -270,16 +318,64 @@ net_error_t windows_net_socket_accept(net_socket_t* server, net_socket_t** clien
     IoFreeIrp(irp);
     
     if (!NT_SUCCESS(status) || !newClient) {
-        ExFreePool(client); // освобождаем клиентский сокет
+        ExFreePool(client);
         return convert_status_from_windows(status);
     }
     
+   // Получаем адрес клиента
+    SOCKADDR_STORAGE remote_addr;
+    RtlZeroMemory(&remote_addr, sizeof(remote_addr));
+
+    PIRP irp_addr = IoAllocateIrp(1, FALSE);
+    if (irp_addr) {
+        KEVENT event_addr;
+        KeInitializeEvent(&event_addr, NotificationEvent, FALSE);
+        IoSetCompletionRoutine(irp_addr, wsk_completion, &event_addr, TRUE, TRUE, TRUE);
+        
+        NTSTATUS addr_status = ((PWSK_PROVIDER_CONNECTION_DISPATCH)newClient->Dispatch)
+                                    ->WskGetRemoteAddress(
+                                        newClient,
+                                        (PSOCKADDR)&remote_addr,
+                                        irp_addr
+                                    );
+        
+        if (addr_status == STATUS_PENDING) {
+            KeWaitForSingleObject(&event_addr, Executive, KernelMode, FALSE, NULL);
+            addr_status = irp_addr->IoStatus.Status;
+        }
+        
+        IoFreeIrp(irp_addr);
+        
+        if (NT_SUCCESS(addr_status)) {
+            if (remote_addr.ss_family == AF_INET) {
+                // IPv4
+                PSOCKADDR_IN ipv4 = (PSOCKADDR_IN)&remote_addr;
+                client->addr.family = NET_AF_INET4;
+                client->addr.port = ipv4->sin_port;
+                client->addr.addr.ipv4 = ipv4->sin_addr.s_addr;
+            } 
+            else if (remote_addr.ss_family == AF_INET6) {
+                // IPv6
+                PSOCKADDR_IN6 ipv6 = (PSOCKADDR_IN6)&remote_addr;
+                client->addr.family = NET_AF_INET6;
+                client->addr.port = ipv6->sin6_port;
+                RtlCopyMemory(client->addr.addr.ipv6, &ipv6->sin6_addr, 16);
+            }
+        } else {
+            // Заполняем нулями
+            client->addr.family = NET_AF_INET4;
+            client->addr.addr.ipv4 = 0;
+            client->addr.port = 0;
+        }
+    }
+
     // Создаём impl для клиента
     PWINDOWS_SOCKET_IMPL client_impl = (PWINDOWS_SOCKET_IMPL)ExAllocatePool2(
         POOL_FLAG_NON_PAGED, sizeof(WINDOWS_SOCKET_IMPL), 'cskW');
     
     if (!client_impl) {
         ((PWSK_PROVIDER_BASIC_DISPATCH)newClient->Dispatch)->WskCloseSocket(newClient, NULL);
+        ExFreePool(client);
         return NET_ERROR_NO_MEMORY;
     }
     
@@ -289,15 +385,14 @@ net_error_t windows_net_socket_accept(net_socket_t* server, net_socket_t** clien
     
     client->context = client_impl;
     client->protocol = NET_PROTO_TCP;
-    client->state = SOCK_STATE_CONNECTED;
+    client->type = NET_SOCK_TYPE_TCP_CONNECTION;
     
     *client_out = client;
-
+    
     return NET_SUCCESS;
 }
 
-net_error_t windows_net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_size, net_address_t* from_addr, size_t* received)
-{
+net_error_t windows_net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_size, net_address_t* from_addr, size_t* received) {
     if (!sock || !buffer || buffer_size == 0)
         return NET_ERROR_INVALID_PARAM;
 
@@ -346,6 +441,9 @@ net_error_t windows_net_socket_receive(net_socket_t* sock, void* buffer, size_t 
                 0,
                 irp
             );
+
+        if (from_addr) 
+            *from_addr = sock->addr;  // копируем сохраненный адрес
     }
     // UDP
     else {
@@ -366,7 +464,15 @@ net_error_t windows_net_socket_receive(net_socket_t* sock, void* buffer, size_t 
             );
 
         if (from_addr && NT_SUCCESS(status)) {
-            // можно дополнить разбор адреса
+            if (addr.si_family == AF_INET) {
+                from_addr->family = NET_AF_INET4;
+                from_addr->port = addr.Ipv4.sin_port;
+                from_addr->addr.ipv4 = addr.Ipv4.sin_addr.s_addr;
+            } else {
+                from_addr->family = NET_AF_INET6;
+                from_addr->port = addr.Ipv6.sin6_port;
+                RtlCopyMemory(from_addr->addr.ipv6, addr.Ipv6.sin6_addr.u.Byte, 16);
+            }
         }
     }
 
@@ -389,37 +495,36 @@ net_error_t windows_net_socket_receive(net_socket_t* sock, void* buffer, size_t 
     return NET_SUCCESS;
 }
 
-
-net_error_t windows_net_socket_get_local_address(net_socket_t* sock, net_address_t* addr) {
+net_error_t windows_net_socket_get_address(net_socket_t* sock, net_address_t* addr) {
     sock = 0;
     addr = 0;
     return 0;
 }
 
-net_error_t windows_net_socket_get_remote_address(net_socket_t* sock, net_address_t* addr) {
+net_error_t windows_net_socket_get_type(net_socket_t* sock, net_socket_type_t* type) {
     sock = 0;
-    addr = 0;
+    type = 0;
     return 0;
 }
 
-net_error_t windows_net_socket_set_nonblocking(net_socket_t* sock, int enable) {
+net_error_t windows_net_socket_get_protocol(net_socket_t* sock, net_protocol_t* protocol) {
     sock = 0;
-    enable = 0;
+    protocol = 0;
     return 0;
 }
 
 // Данная функция требует тестов!!!!
-net_error_t windows_net_socket_last_error(net_socket_t *sock, net_error_t error) {
+net_error_t windows_net_socket_last_error(net_socket_t *sock, net_error_t* error) {
     if (!sock)
         return NET_ERROR_INVALID_PARAM;
     
-    error = sock->error;
+    error = &sock->error;
 
     return NET_SUCCESS;
 }
 
 // Данная функция требует тестов!!!!
-net_error_t windows_net_socket_last_platform_error(net_socket_t* sock, const void* platform_error) {
+net_error_t windows_net_socket_last_platform_error(net_socket_t* sock, const void** platform_error) {
     if (!sock)
         return NET_ERROR_INVALID_PARAM;
 

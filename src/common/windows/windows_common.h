@@ -3,8 +3,6 @@
 
 #include "../../adapters/windows/windows_adapter.h"
 #include "../common.h"
-#include <wsk.h>
-#include <wdm.h>
 
 typedef enum {
     SOCK_STATE_INIT        = 0,  // Только создан
@@ -28,18 +26,11 @@ extern WSK_CLIENT_DISPATCH WskAppDispatch;
 // Конвертация ошибок
 net_error_t convert_status_from_windows(NTSTATUS ntstatus);
 
-// Состояния сокета (упрощенные)
-#define SOCK_STATE_INIT       0
-#define SOCK_STATE_LISTENING  2
-#define SOCK_STATE_CONNECTED  3
-#define SOCK_STATE_UDP        4
-
 // Контекст сокета (упрощенный)
 typedef struct WINDOWS_SOCKET_IMPL {
     PWSK_SOCKET wsk_socket;         // WSK сокет
     PWSK_SOCKET active_client;      // Для TCP клиента
     KEVENT completion_event;        // Для синхронизации
-    BOOLEAN is_listening;           // Режим прослушивания
 } WINDOWS_SOCKET_IMPL, *PWINDOWS_SOCKET_IMPL;
 
 #endif
