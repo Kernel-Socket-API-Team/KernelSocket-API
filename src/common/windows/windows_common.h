@@ -3,10 +3,16 @@
 
 #include "../../adapters/windows/windows_adapter.h"
 #include "../common.h"
-#include <wsk.h>
-#include <wdm.h>
 
-/* Контекст для работы с сокетами Windows */
+typedef enum {
+    SOCK_STATE_INIT        = 0,  // Только создан
+    SOCK_STATE_BOUND       = 1,  // Привязан к адресу
+    SOCK_STATE_LISTENING   = 2,  // TCP в режиме прослушивания
+    SOCK_STATE_CONNECTED   = 3,  // TCP подключен (клиент или принятый)
+    SOCK_STATE_UDP         = 4,   // UDP сокет
+} net_socket_state_t;
+
+// Глобальный контекст WSK
 typedef struct WSK_CONTEXT {
     WSK_REGISTRATION Registration;
     WSK_PROVIDER_NPI ProviderNpi;
@@ -15,19 +21,16 @@ typedef struct WSK_CONTEXT {
 } WSK_CONTEXT, *PWSK_CONTEXT;
 
 extern WSK_CONTEXT g_WskContext;
+extern WSK_CLIENT_DISPATCH WskAppDispatch;
 
-/* Диспетчеризация WSK клиента */
-const WSK_CLIENT_DISPATCH WskAppDispatch = {
-    MAKE_WSK_VERSION(1, 0),     // Версия WSK 1.0
-    0,                          // Зарезервировано
-    NULL                        // ClientCallback (не используется)
-};
-
-/* 
-    Функция конвертации ошибок Windows под интерфес ошибок,
-    который определен в ksockapi.h
-    Полный список ошибок можно посмотреть в ntstatus.h
-*/
+// Конвертация ошибок
 net_error_t convert_status_from_windows(NTSTATUS ntstatus);
+
+// Контекст сокета (упрощенный)
+typedef struct WINDOWS_SOCKET_IMPL {
+    PWSK_SOCKET wsk_socket;         // WSK сокет
+    PWSK_SOCKET active_client;      // Для TCP клиента
+    KEVENT completion_event;        // Для синхронизации
+} WINDOWS_SOCKET_IMPL, *PWINDOWS_SOCKET_IMPL;
 
 #endif
