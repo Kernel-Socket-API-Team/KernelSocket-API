@@ -133,7 +133,7 @@ net_error_t windows_net_socket_create(net_family_t family, net_protocol_t protoc
 
 net_error_t windows_net_socket_close(net_socket_t* sock) {
     if (!sock) 
-        return NET_ERROR_INVALID_PARAM;
+        return NET_ERROR_INVALID_PARAM;    
     
     PWINDOWS_SOCKET_IMPL impl = (PWINDOWS_SOCKET_IMPL)sock->context;
     if (!impl || !impl->wsk_socket) 
@@ -185,8 +185,12 @@ net_error_t windows_net_socket_close(net_socket_t* sock) {
 }
 
 net_error_t windows_net_socket_bind(net_socket_t* sock, const net_address_t* addr) {
-    if (!sock || !addr) return NET_ERROR_INVALID_PARAM;
+    if (!sock || !addr) 
+        return NET_ERROR_INVALID_PARAM;
     
+    if (sock->addr.family != addr->family) 
+        return NET_ERROR_INVALID_PARAM;
+
     PWINDOWS_SOCKET_IMPL impl = (PWINDOWS_SOCKET_IMPL)sock->context;
     if (!impl || !impl->wsk_socket) 
         return NET_ERROR_INVALID_STATE;
