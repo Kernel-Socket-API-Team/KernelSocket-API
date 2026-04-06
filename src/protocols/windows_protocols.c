@@ -133,7 +133,7 @@ net_error_t windows_net_socket_create(net_family_t family, net_protocol_t protoc
 
 net_error_t windows_net_socket_close(net_socket_t* sock) {
     if (!sock) 
-        return NET_ERROR_INVALID_PARAM;
+        return NET_ERROR_INVALID_PARAM;    
     
     PWINDOWS_SOCKET_IMPL impl = (PWINDOWS_SOCKET_IMPL)sock->context;
     if (!impl || !impl->wsk_socket) 
@@ -185,16 +185,15 @@ net_error_t windows_net_socket_close(net_socket_t* sock) {
 }
 
 net_error_t windows_net_socket_bind(net_socket_t* sock, const net_address_t* addr) {
-    if (!sock || !addr) return NET_ERROR_INVALID_PARAM;
+    if (!sock || !addr) 
+        return NET_ERROR_INVALID_PARAM;
     
+    if (sock->addr.family != addr->family) 
+        return NET_ERROR_INVALID_PARAM;
+
     PWINDOWS_SOCKET_IMPL impl = (PWINDOWS_SOCKET_IMPL)sock->context;
     if (!impl || !impl->wsk_socket) 
         return NET_ERROR_INVALID_STATE;
-    
-    SOCKADDR_IN local_addr;
-    local_addr.sin_family = AF_INET;
-    local_addr.sin_port = addr->port;
-    local_addr.sin_addr.s_addr = addr->addr.ipv4;
     
     PIRP irp = IoAllocateIrp(1, FALSE);
     if (!irp) 
@@ -205,24 +204,52 @@ net_error_t windows_net_socket_bind(net_socket_t* sock, const net_address_t* add
     IoSetCompletionRoutine(irp, wsk_completion, &event, TRUE, TRUE, TRUE);
     
     NTSTATUS status;
-
+    SOCKADDR_STORAGE local_addr_storage;
+    PSOCKADDR pSockAddr = NULL;
+    ULONG addr_size = 0;
+    
+    // Подготовка адреса в зависимости от семейства
+    if (addr->family == NET_AF_INET4) {
+        PSOCKADDR_IN pAddr4 = (PSOCKADDR_IN)&local_addr_storage;
+        RtlZeroMemory(pAddr4, sizeof(SOCKADDR_IN));
+        pAddr4->sin_family = AF_INET;
+        pAddr4->sin_port = addr->port;
+        pAddr4->sin_addr.s_addr = addr->addr.ipv4;
+        pSockAddr = (PSOCKADDR)pAddr4;
+        addr_size = sizeof(SOCKADDR_IN);
+    }
+    else if (addr->family == NET_AF_INET6) {
+        PSOCKADDR_IN6 pAddr6 = (PSOCKADDR_IN6)&local_addr_storage;
+        RtlZeroMemory(pAddr6, sizeof(SOCKADDR_IN6));
+        pAddr6->sin6_family = AF_INET6;
+        pAddr6->sin6_port = addr->port;
+        RtlCopyMemory(&pAddr6->sin6_addr, addr->addr.ipv6, 16);
+        pAddr6->sin6_flowinfo = 0;
+        pAddr6->sin6_scope_id = 0;
+        pSockAddr = (PSOCKADDR)pAddr6;
+        addr_size = sizeof(SOCKADDR_IN6);
+    }
+    else {
+        IoFreeIrp(irp);
+        return NET_ERROR_INVALID_PARAM;
+    }
+    
     switch (sock->type) {
-
         case NET_SOCK_TYPE_TCP_LISTEN:
             status = ((PWSK_PROVIDER_LISTEN_DISPATCH)impl->wsk_socket->Dispatch)
-                ->WskBind(impl->wsk_socket, (PSOCKADDR)&local_addr, 0, irp);
+                ->WskBind(impl->wsk_socket, pSockAddr, 0, irp);
             break;
-
+            
         case NET_SOCK_TYPE_TCP_CONNECTION:
             status = ((PWSK_PROVIDER_CONNECTION_DISPATCH)impl->wsk_socket->Dispatch)
-                ->WskBind(impl->wsk_socket, (PSOCKADDR)&local_addr, 0, irp);
+                ->WskBind(impl->wsk_socket, pSockAddr, 0, irp);
             break;
-
+            
         case NET_SOCK_TYPE_UDP:
             status = ((PWSK_PROVIDER_DATAGRAM_DISPATCH)impl->wsk_socket->Dispatch)
-                ->WskBind(impl->wsk_socket, (PSOCKADDR)&local_addr, 0, irp);
+                ->WskBind(impl->wsk_socket, pSockAddr, 0, irp);
             break;
-
+            
         default:
             IoFreeIrp(irp);
             return NET_ERROR_INVALID_PARAM;
@@ -232,7 +259,7 @@ net_error_t windows_net_socket_bind(net_socket_t* sock, const net_address_t* add
         KeWaitForSingleObject(&event, Executive, KernelMode, FALSE, NULL);
         status = irp->IoStatus.Status;
     }
-
+    
     if (NT_SUCCESS(status)) 
         sock->addr = *addr;
     
@@ -447,9 +474,9 @@ net_error_t windows_net_socket_receive(net_socket_t* sock, void* buffer, size_t 
     }
     // UDP
     else {
-
         SOCKADDR_INET addr;
         ULONG addr_len = sizeof(addr);
+        RtlZeroMemory(&addr, sizeof(addr));
 
         status = ((PWSK_PROVIDER_DATAGRAM_DISPATCH)
             impl->wsk_socket->Dispatch)->WskReceiveFrom(
@@ -463,12 +490,17 @@ net_error_t windows_net_socket_receive(net_socket_t* sock, void* buffer, size_t 
                 irp
             );
 
+        if (status == STATUS_PENDING) {
+            KeWaitForSingleObject(&event, Executive, KernelMode, FALSE, NULL);
+            status = irp->IoStatus.Status;
+        }
+
         if (from_addr && NT_SUCCESS(status)) {
             if (addr.si_family == AF_INET) {
                 from_addr->family = NET_AF_INET4;
                 from_addr->port = addr.Ipv4.sin_port;
                 from_addr->addr.ipv4 = addr.Ipv4.sin_addr.s_addr;
-            } else {
+            } else if (addr.si_family == AF_INET6) {
                 from_addr->family = NET_AF_INET6;
                 from_addr->port = addr.Ipv6.sin6_port;
                 RtlCopyMemory(from_addr->addr.ipv6, addr.Ipv6.sin6_addr.u.Byte, 16);
