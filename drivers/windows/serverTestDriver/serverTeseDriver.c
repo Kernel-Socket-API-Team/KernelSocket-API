@@ -26,14 +26,20 @@ VOID ServerThreadTCP(PVOID Context) {
   if (err != NET_SUCCESS) goto exit;
 
   // Создание сокета
-  err = net_socket_create(NET_AF_INET4, NET_PROTO_TCP, NET_SOCK_TYPE_TCP_LISTEN,
+  err = net_socket_create(NET_AF_INET6, NET_PROTO_TCP, NET_SOCK_TYPE_TCP_LISTEN,
                           &g_ServerSockTCP);
   if (err != NET_SUCCESS) goto exit;
 
   // Привязка
-  addr.family = NET_AF_INET4;
+  /*
+  addr.family = NET_AF_INET6;
   net_htons(PORT_TCP, &addr.port);
-  addr.addr.ipv4 = 0;
+  addr.addr.ipv4 = 0;*/
+
+  // Привязка для TCP
+  addr.family = NET_AF_INET6;
+  net_htons(PORT_TCP, &addr.port);
+  memset(addr.addr.ipv6, 0, 16); // :: - все IPv6 интерфейсы
 
   err = net_socket_bind(g_ServerSockTCP, &addr);
   if (err != NET_SUCCESS) goto close_server;
@@ -100,13 +106,19 @@ VOID ServerThreadUDP(PVOID Context) {
   if (err != NET_SUCCESS) goto exit;
 
   // Создание UDP сокета
-  err = net_socket_create(NET_AF_INET4, NET_PROTO_UDP, NET_SOCK_TYPE_UDP, &g_ServerSockUDP);
+  err = net_socket_create(NET_AF_INET6, NET_PROTO_UDP, NET_SOCK_TYPE_UDP,
+                          &g_ServerSockUDP);
   if (err != NET_SUCCESS) goto exit;
 
   // Привязка к порту
-  addr.family = NET_AF_INET4;
-  net_htons(PORT_UDP, &(addr.port));
-  addr.addr.ipv4 = 0;
+  /*
+    addr.family = NET_AF_INET4;
+    net_htons(PORT_UDP, &addr.port);
+    addr.addr.ipv4 = 0;
+  */
+  addr.family = NET_AF_INET6;
+  net_htons(PORT_UDP, &addr.port);
+  memset(addr.addr.ipv6, 0, 16); // :: - все IPv6 интерфейсы
 
   err = net_socket_bind(g_ServerSockUDP, &addr);
   if (err != NET_SUCCESS) goto close_socket;
