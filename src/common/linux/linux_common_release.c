@@ -1,6 +1,8 @@
 #include "linux_common.h"
 
 #include "windows_common.h"
+#include <arpa/inet.h>
+#include <netinet/ip.h>
 
 net_error_t linux_net_register () {
     return 0;
@@ -20,10 +22,44 @@ net_error_t linux_net_cleanup () {
 }
 
 net_error_t linux_net_address_parse(const char* str, net_family_t ip_family, net_address_t* addr) {
-    str = 0;
-    ip_family = 0;
-    addr = 0;
-    return 0;
+    if (!str || !addr)
+    {
+        return NET_ERROR_INVALID_PARAM;
+    }
+
+    int status = 0;
+
+    if (ip_family == NET_AF_INET4)
+    {
+        struct in_addr ip4;
+        status = inet_pton(AF_INET, str, &ip4);
+
+        if (status)
+        {
+            addr->family = ip_family;
+            addr->addr.ipv4 = ip4.s_addr;
+        }
+    }
+    else if (ip_family == NET_AF_INET6)
+    {
+        struct in6_addr ip6;
+        status = inet_pton(AF_INET6, str, &ip6);
+
+        if (status)
+        {
+            addr->family = ip_family;
+            memcpy(addr->addr.ipv6, ip6.__in6_u.__u6_addr8, 16);
+        }
+    }
+
+    if (!status)
+    {
+        return NET_ERROR_INVALID_PARAM;
+    }
+    else
+    {
+        return NET_SUCCESS;
+    }
 }
 
 net_error_t linux_net_htons(uint16_t hostshort, uint16_t* netshort) {
