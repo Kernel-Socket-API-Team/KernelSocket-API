@@ -3,6 +3,9 @@
 #include "windows_common.h"
 #include <arpa/inet.h>
 #include <netinet/ip.h>
+#include <inttypes.h>
+#include <stdio.h>
+#include <string.h>
 
 net_error_t linux_net_register () {
     return 0;
@@ -74,10 +77,49 @@ net_error_t linux_net_ntohs(uint16_t netshort, uint16_t* hostshort) {
     return 0;
 }
 
-net_error_t linux_net_address_to_string (const net_address_t* addr, char* buffer, size_t buffer_size, bool include_port) {
-    addr = 0;
-    buffer = 0;
-    buffer_size = 0;
-    include_port = 0;
-    return 0;
+net_error_t linux_net_address_to_string(const net_address_t* addr, char* buffer, size_t buffer_size, bool include_port) {
+    if (!addr || !buffer || !buffer_size)
+    {
+        return NET_ERROR_INVALID_PARAM;
+    }
+
+    net_addr_str_size_t str_size = net_address_required_size(addr->family, include_port);
+    if (str_size.max == 0)
+    {
+        return NET_ERROR_INVALID_PARAM;
+    }
+    else if (buffer_size < str_size.max)
+    {
+        return NET_ERROR_BUFFER_TOO_SMALL;
+    }
+
+    uint16_t host_port = include_port ? ntohs(addr->port) : 0;
+    char port_buffer[8];
+    sprintf(port_buffer, "%" PRIu16 "\n", host_port);
+
+    int status = 0;
+    uint64_t size = (uint64_t)buffer_size;
+
+    if (addr->family == NET_AF_INET4)
+    {
+        struct in_addr ip4;
+        ip4.s_addr = addr->addr.ipv4;
+        status = inet_ntop(AF_INET, &ip4, buffer, size);
+    }
+    else if (addr->family == NET_AF_INET6)
+    {
+        struct in6_addr ip6;
+        memcpy(addr->addr.ipv6, ip6.__in6_u.__u6_addr8, 16);
+        status = inet_ntop(AF_INET6, &ip6, buffer, size);
+    }
+    strcat(buffer, port_buffer);
+
+    if (!status)
+    {
+        return NET_ERROR_INVALID_PARAM;
+    }
+    else
+    {
+        return NET_SUCCESS;
+    }
 }
