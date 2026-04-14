@@ -97,9 +97,62 @@ net_error_t linux_net_socket_close(net_socket_t *sock) {
 }
 
 net_error_t linux_net_socket_bind(net_socket_t* sock, const net_address_t* addr) {
-    sock = 0;
-    addr = 0;
-    return 0;
+
+    if (!sock || !addr)
+        return NET_ERROR_INVALID_PARAM;
+
+    if (sock->addr.family != addr->family)
+        return NET_ERROR_INVALID_PARAM;
+
+    PLINUX_SOCKET_IMPL impl = (PLINUX_SOCKET_IMPL)sock->context;
+    if (!impl || !impl->kernel_socket)
+        return NET_ERROR_INVALID_STATE;
+
+    int status;
+
+    // Заполняем структуру адреса ядра
+    if (addr->family == NET_AF_INET4) {
+
+        struct sockaddr_in local_addr;
+        memset(&local_addr, 0, sizeof(local_addr));
+
+        local_addr.sin_family = AF_INET;
+        local_addr.sin_port = addr->port;
+        local_addr.sin_addr.s_addr = addr->addr.ipv4;
+
+        // bind
+        status = kernel_bind(impl->kernel_socket,
+            (struct sockaddr*)&local_addr,
+            sizeof(local_addr));
+
+    }
+    else if (addr->family == NET_AF_INET6) {
+
+        struct sockaddr_in6 local_addr;
+        memset(&local_addr, 0, sizeof(local_addr));
+
+        local_addr.sin6_family = AF_INET6;
+        local_addr.sin6_port = addr->port;
+        memcpy(&local_addr.sin6_addr, addr->addr.ipv6, 16);
+
+        status = kernel_bind(impl->kernel_socket,
+            (struct sockaddr*)&local_addr,
+            sizeof(local_addr));
+
+    }
+    else {
+        return NET_ERROR_INVALID_PARAM;
+    }
+
+    if (status < 0) {
+        return convert_status_from_linux(status);
+    }
+
+    sock->addr = *addr;
+
+    debug_net_bind_info("AFTER_BIND", sock, addr);
+
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_connect(net_socket_t* sock, const net_address_t* addr) {

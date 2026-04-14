@@ -1,3 +1,4 @@
+// копия
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -15,6 +16,7 @@
 // Пока реализованы:
 // - linux_net_socket_create(...)
 // - linux_net_socket_close(...)
+// - linux_net_socket_bind(...)
 
 // Определяем необходимые для работы структуры и функции
 
@@ -99,6 +101,7 @@ typedef struct LINUX_SOCKET_IMPL {
 
 net_error_t linux_net_socket_create(net_family_t family, net_protocol_t protocol, net_socket_type_t type, net_socket_t** socketOut);
 net_error_t linux_net_socket_close(net_socket_t* sock);
+net_error_t linux_net_socket_bind(net_socket_t* sock, const net_address_t* addr);
 
 // Конвертация ошибок
 net_error_t convert_status_from_linux(int error);
@@ -109,17 +112,40 @@ static net_socket_t* g_test_socket = NULL;
 static int __init minimal_driver_init(void) {
     printk(KERN_INFO "[driver] Loading module...\n");
 
-    // IPv4, UDP, Тип UDP
+    net_socket_t* sock = NULL;
+
+    // IPv4, TCP, Тип TCP_CONNECTION - пока не важно какие
     net_error_t status = linux_net_socket_create(NET_AF_INET4,
         NET_PROTO_TCP,
         NET_SOCK_TYPE_TCP_CONNECTION,
-        &g_test_socket);
+        &sock);
 
     if (status != NET_SUCCESS) {
         printk(KERN_ERR "[driver] Failed to create socket, error code: %d\n",
             status);
         return -1;
     }
+
+    net_address_t addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.family = NET_AF_INET4;
+
+    // Можно использовать linux_net_ntoh(...)
+    addr.port = 0;
+
+    // Можно использовать linux_net_address_parse(...)
+    addr.addr.ipv4 = 0; // 0.0.0.0
+
+    // Привязываем
+    status = linux_net_socket_bind(sock, &addr);
+    if (status != NET_SUCCESS) {
+        printk(KERN_ERR "[driver] bind failed: %d\n", status);
+        linux_net_socket_close(sock);
+        return -1;
+    }
+
+    printk(KERN_INFO "[driver] Bind OK\n");
+    g_test_socket = sock;
 
     printk(KERN_INFO "[driver] Socket created successfully at address %p\n",
         g_test_socket);
@@ -240,6 +266,65 @@ net_error_t linux_net_socket_close(net_socket_t* sock) {
     sock->context = NULL;
 
     kfree(sock);
+
+    return NET_SUCCESS;
+}
+
+net_error_t linux_net_socket_bind(net_socket_t* sock, const net_address_t* addr) {
+
+    if (!sock || !addr)
+        return NET_ERROR_INVALID_PARAM;
+
+    if (sock->addr.family != addr->family)
+        return NET_ERROR_INVALID_PARAM;
+
+    PLINUX_SOCKET_IMPL impl = (PLINUX_SOCKET_IMPL)sock->context;
+    if (!impl || !impl->kernel_socket)
+        return NET_ERROR_INVALID_STATE;
+
+    int status;
+
+    // Заполняем структуру адреса ядра
+    if (addr->family == NET_AF_INET4) {
+
+        struct sockaddr_in local_addr;
+        memset(&local_addr, 0, sizeof(local_addr));
+
+        local_addr.sin_family = AF_INET;
+        local_addr.sin_port = addr->port;
+        local_addr.sin_addr.s_addr = addr->addr.ipv4;
+
+        // bind
+        status = kernel_bind(impl->kernel_socket,
+            (struct sockaddr*)&local_addr,
+            sizeof(local_addr));
+
+    }
+    else if (addr->family == NET_AF_INET6) {
+
+        struct sockaddr_in6 local_addr;
+        memset(&local_addr, 0, sizeof(local_addr));
+
+        local_addr.sin6_family = AF_INET6;
+        local_addr.sin6_port = addr->port;
+        memcpy(&local_addr.sin6_addr, addr->addr.ipv6, 16);
+
+        status = kernel_bind(impl->kernel_socket,
+            (struct sockaddr*)&local_addr,
+            sizeof(local_addr));
+
+    }
+    else {
+        return NET_ERROR_INVALID_PARAM;
+    }
+
+    if (status < 0) {
+        return convert_status_from_linux(status);
+    }
+
+    sock->addr = *addr;
+
+    debug_net_bind_info("AFTER_BIND", sock, addr);
 
     return NET_SUCCESS;
 }
