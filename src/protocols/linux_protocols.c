@@ -67,9 +67,36 @@ net_error_t linux_net_socket_create(net_family_t family, net_protocol_t protocol
 }
 
 
-net_error_t linux_net_socket_close(net_socket_t* sock) {
-    sock = 0;
-    return 0;
+net_error_t linux_net_socket_close(net_socket_t *sock) {
+  if (!sock)
+    return NET_ERROR_INVALID_PARAM;
+
+  PLINUX_SOCKET_IMPL impl = (PLINUX_SOCKET_IMPL)sock->context;
+  if (!impl || !impl->kernel_socket)
+    return NET_ERROR_INVALID_STATE;
+
+  struct socket *ksocket = impl->kernel_socket;
+  struct socket *active = impl->active_client;
+
+  // Закрываем клиентский сокет (если есть)
+  if (active && active != ksocket) {
+    sock_release(active);
+    active = NULL;
+  }
+
+  // Закрываем основной системный сокет
+  if (ksocket) {
+    sock_release(ksocket);
+    ksocket = NULL;
+  }
+
+  // Освобождаем память
+  kfree(impl);
+  sock->context = NULL;
+
+  kfree(sock);
+
+  return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_bind(net_socket_t* sock, const net_address_t* addr) {

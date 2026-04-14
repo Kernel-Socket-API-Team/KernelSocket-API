@@ -14,6 +14,7 @@
 // в linux_protocols.c
 // Пока реализованы:
 // - linux_net_socket_create(...)
+// - linux_net_socket_close(...)
 
 // Определяем необходимые для работы структуры и функции
 
@@ -96,12 +97,8 @@ typedef struct LINUX_SOCKET_IMPL {
     struct socket* active_client; // Для TCP клиента
 } LINUX_SOCKET_IMPL, * PLINUX_SOCKET_IMPL;
 
-net_error_t linux_net_socket_create(net_family_t family,
-    net_protocol_t protocol,
-    net_socket_type_t type,
-    net_socket_t** socketOut);
-
-void linux_net_socket_free(net_socket_t* sock);
+net_error_t linux_net_socket_create(net_family_t family, net_protocol_t protocol, net_socket_type_t type, net_socket_t** socketOut);
+net_error_t linux_net_socket_close(net_socket_t *sock);
 
 // Конвертация ошибок
 net_error_t convert_status_from_linux(int error);
@@ -113,9 +110,10 @@ static int __init minimal_driver_init(void) {
     printk(KERN_INFO "[driver] Loading module...\n");
 
     // IPv4, UDP, Тип UDP
-    net_error_t status =
-        linux_net_socket_create(NET_AF_INET4, NET_PROTO_TCP,
-            NET_SOCK_TYPE_TCP_CONNECTION, &g_test_socket);
+    net_error_t status = linux_net_socket_create(NET_AF_INET4, 
+                                                NET_PROTO_TCP,
+                                                NET_SOCK_TYPE_TCP_CONNECTION,
+                                                &g_test_socket);
 
     if (status != NET_SUCCESS) {
         printk(KERN_ERR "[driver] Failed to create socket, error code: %d\n",
@@ -130,8 +128,10 @@ static int __init minimal_driver_init(void) {
 
 static void __exit minimal_driver_exit(void) {
     if (g_test_socket) {
-        linux_net_socket_free(g_test_socket);
-        printk(KERN_INFO "[driver] Socket resources released\n");
+        if (linux_net_socket_close(g_test_socket) != NET_SUCCESS) {
+            printk(KERN_ERR "[driver] Socket %p was not closed if it exist\n", g_test_socket);
+        } else
+            printk(KERN_INFO "[driver] Socket was successfully closed\n");
     }
     printk(KERN_INFO "[driver] Module unloaded\n");
 }
@@ -214,18 +214,36 @@ net_error_t linux_net_socket_create(net_family_t family, net_protocol_t protocol
     return NET_SUCCESS;
 }
 
-void linux_net_socket_free(net_socket_t* sock) {
+net_error_t linux_net_socket_close(net_socket_t* sock) {
     if (!sock)
-        return;
+        return NET_ERROR_INVALID_PARAM;
 
     PLINUX_SOCKET_IMPL impl = (PLINUX_SOCKET_IMPL)sock->context;
-    if (impl) {
-        if (impl->kernel_socket) {
-            sock_release(impl->kernel_socket);
-        }
-        kfree(impl);
+    if (!impl || !impl->kernel_socket)
+      return NET_ERROR_INVALID_STATE;
+
+    struct socket *ksocket = impl->kernel_socket;
+    struct socket *active = impl->active_client;
+
+    // Закрываем клиентский сокет (если есть)
+    if (active && active != ksocket) {
+      sock_release(active);
+      active = NULL;
     }
+
+    // Закрываем основной системный сокет
+    if (ksocket) {
+      sock_release(ksocket);
+      ksocket = NULL;
+    }
+
+    // Освобождаем память
+    kfree(impl);
+    sock->context = NULL;
+
     kfree(sock);
+
+    return NET_SUCCESS;
 }
 
 net_error_t convert_status_from_linux(int error) {
@@ -237,29 +255,20 @@ net_error_t convert_status_from_linux(int error) {
     int code = -error;
 
     switch (code) {
-    case ENOMEM:
-        return NET_ERROR_NO_MEMORY;
-    case EACCES:
-        return NET_ERROR_ACCESS_DENIED;
-    case EPERM:
-        return NET_ERROR_ACCESS_DENIED;
-    case EINVAL:
-        return NET_ERROR_INVALID_PARAM;
-    case ETIMEDOUT:
-        return NET_ERROR_TIMEOUT;
-    case EMSGSIZE:
-        return NET_ERROR_BUFFER_TOO_SMALL;
-    case ENOBUFS:
-        return NET_ERROR_NO_MEMORY;
+    case ENOMEM:        return NET_ERROR_NO_MEMORY;
+    case EACCES:        return NET_ERROR_ACCESS_DENIED;
+    case EPERM:         return NET_ERROR_ACCESS_DENIED;
+    case EINVAL:        return NET_ERROR_INVALID_PARAM;
+    case ETIMEDOUT:     return NET_ERROR_TIMEOUT;
+    case EMSGSIZE:      return NET_ERROR_BUFFER_TOO_SMALL;
+    case ENOBUFS:       return NET_ERROR_NO_MEMORY;
 
         // Специфические ошибки
     case ECONNREFUSED:
     case EADDRINUSE:
     case ENETUNREACH:
-    case EAGAIN:
-        return NET_ERROR_GENERIC;
+    case EAGAIN:        return NET_ERROR_GENERIC;
 
-    default:
-        return NET_ERROR_GENERIC;
+    default:            return NET_ERROR_GENERIC;
     }
 }
