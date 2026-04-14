@@ -98,7 +98,7 @@ typedef struct LINUX_SOCKET_IMPL {
 } LINUX_SOCKET_IMPL, * PLINUX_SOCKET_IMPL;
 
 net_error_t linux_net_socket_create(net_family_t family, net_protocol_t protocol, net_socket_type_t type, net_socket_t** socketOut);
-net_error_t linux_net_socket_close(net_socket_t *sock);
+net_error_t linux_net_socket_close(net_socket_t* sock);
 
 // Конвертация ошибок
 net_error_t convert_status_from_linux(int error);
@@ -110,10 +110,10 @@ static int __init minimal_driver_init(void) {
     printk(KERN_INFO "[driver] Loading module...\n");
 
     // IPv4, UDP, Тип UDP
-    net_error_t status = linux_net_socket_create(NET_AF_INET4, 
-                                                NET_PROTO_TCP,
-                                                NET_SOCK_TYPE_TCP_CONNECTION,
-                                                &g_test_socket);
+    net_error_t status = linux_net_socket_create(NET_AF_INET4,
+        NET_PROTO_TCP,
+        NET_SOCK_TYPE_TCP_CONNECTION,
+        &g_test_socket);
 
     if (status != NET_SUCCESS) {
         printk(KERN_ERR "[driver] Failed to create socket, error code: %d\n",
@@ -130,7 +130,8 @@ static void __exit minimal_driver_exit(void) {
     if (g_test_socket) {
         if (linux_net_socket_close(g_test_socket) != NET_SUCCESS) {
             printk(KERN_ERR "[driver] Socket %p was not closed if it exist\n", g_test_socket);
-        } else
+        }
+        else
             printk(KERN_INFO "[driver] Socket was successfully closed\n");
     }
     printk(KERN_INFO "[driver] Module unloaded\n");
@@ -220,21 +221,18 @@ net_error_t linux_net_socket_close(net_socket_t* sock) {
 
     PLINUX_SOCKET_IMPL impl = (PLINUX_SOCKET_IMPL)sock->context;
     if (!impl || !impl->kernel_socket)
-      return NET_ERROR_INVALID_STATE;
-
-    struct socket *ksocket = impl->kernel_socket;
-    struct socket *active = impl->active_client;
+        return NET_ERROR_INVALID_STATE;
 
     // Закрываем клиентский сокет (если есть)
-    if (active && active != ksocket) {
-      sock_release(active);
-      active = NULL;
+    if (impl->active_client && impl->active_client != impl->kernel_socket) {
+        sock_release(impl->active_client);
+        impl->active_client = NULL;
     }
 
     // Закрываем основной системный сокет
-    if (ksocket) {
-      sock_release(ksocket);
-      ksocket = NULL;
+    if (impl->kernel_socket) {
+        sock_release(impl->kernel_socket);
+        impl->kernel_socket = NULL;
     }
 
     // Освобождаем память

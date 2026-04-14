@@ -75,19 +75,16 @@ net_error_t linux_net_socket_close(net_socket_t *sock) {
   if (!impl || !impl->kernel_socket)
     return NET_ERROR_INVALID_STATE;
 
-  struct socket *ksocket = impl->kernel_socket;
-  struct socket *active = impl->active_client;
-
   // Закрываем клиентский сокет (если есть)
-  if (active && active != ksocket) {
-    sock_release(active);
-    active = NULL;
+  if (impl->active_client && impl->active_client != impl->kernel_socket) {
+    sock_release(impl->active_client);
+    impl->active_client = NULL;
   }
 
   // Закрываем основной системный сокет
-  if (ksocket) {
-    sock_release(ksocket);
-    ksocket = NULL;
+  if (impl->kernel_socket) {
+    sock_release(impl->kernel_socket);
+    impl->kernel_socket = NULL;
   }
 
   // Освобождаем память
