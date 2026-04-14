@@ -1,12 +1,71 @@
 #include "../common/linux/linux_common.h"
 
 net_error_t linux_net_socket_create(net_family_t family, net_protocol_t protocol, net_socket_type_t type, net_socket_t** socketOut) {
-    family = 0;
-    protocol = 0;
-    type = 0;
-    socketOut = 0;
-    return 0;
+
+    /* TODO (требуется написать linux_net_is_ready):
+    net_error_t lib_state = linux_net_is_ready();
+    if (lib_state != NET_SUCCESS)
+        return lib_state;
+    */
+
+    if (!socketOut)
+        return NET_ERROR_INVALID_PARAM;
+
+    if (protocol == NET_PROTO_UDP && type != NET_SOCK_TYPE_UDP)
+        return NET_ERROR_INVALID_PARAM;
+
+    if (protocol == NET_PROTO_TCP && type == NET_SOCK_TYPE_UDP)
+        return NET_ERROR_INVALID_PARAM;
+
+    if (type != NET_SOCK_TYPE_TCP_LISTEN &&
+        type != NET_SOCK_TYPE_TCP_CONNECTION && type != NET_SOCK_TYPE_UDP)
+        return NET_ERROR_INVALID_PARAM;
+
+    int status;
+    struct socket* kernel_socket;
+    PLINUX_SOCKET_IMPL impl;
+    net_socket_t* sock;
+
+    // Переводим наши типы в типы, понятные ядру
+    int af = (family == NET_AF_INET4) ? AF_INET : AF_INET6;
+    int kind = (protocol == NET_PROTO_UDP) ? SOCK_DGRAM : SOCK_STREAM;
+    int proto = (protocol == NET_PROTO_UDP) ? IPPROTO_UDP : IPPROTO_TCP;
+
+    // Создаём сокет ядра
+    kernel_socket = NULL;
+    status = sock_create_kern(&init_net, af, kind, proto, &kernel_socket);
+    if (status < 0)
+        return convert_status_from_linux(status);
+
+    // Выделяем память
+    sock = kmalloc(sizeof(net_socket_t), GFP_KERNEL);
+    if (!sock) {
+        sock_release(kernel_socket);
+        return NET_ERROR_NO_MEMORY;
+    }
+    memset(sock, 0, sizeof(net_socket_t));
+
+    // Создаём Linux контекст
+    impl = kmalloc(sizeof(LINUX_SOCKET_IMPL), GFP_KERNEL);
+    if (!impl) {
+        sock_release(kernel_socket);
+        kfree(sock);
+        return NET_ERROR_NO_MEMORY;
+    }
+    memset(impl, 0, sizeof(LINUX_SOCKET_IMPL));
+
+    impl->kernel_socket = kernel_socket;
+
+    sock->addr.family = family;
+    sock->context = impl;
+    sock->protocol = protocol;
+    sock->type = type;
+
+    *socketOut = sock;
+
+    return NET_SUCCESS;
 }
+
 
 net_error_t linux_net_socket_close(net_socket_t* sock) {
     sock = 0;

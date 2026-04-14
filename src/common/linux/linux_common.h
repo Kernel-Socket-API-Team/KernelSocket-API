@@ -5,6 +5,17 @@
 #include "../common.h"
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/init.h>
+
+// Работа с сокетами
+#include <linux/in.h>
+#include <linux/inet.h>
+#include <linux/net.h>
+#include <net/sock.h>
+
+// Вспомогательные заголовочные файлы
+#include <linux/slab.h>
+#include <linux/string.h>
 
 typedef enum {
   SOCK_STATE_INIT = 0,      // Только создан
