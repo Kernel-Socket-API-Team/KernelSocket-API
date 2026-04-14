@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "restore": {
+    "/home/igorjob/programming/c/KernelSocket-API/restore-packages/RestorePackages.csproj": {}
+  },
+  "projects": {
+    "/home/igorjob/programming/c/KernelSocket-API/restore-packages/RestorePackages.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/igorjob/programming/c/KernelSocket-API/restore-packages/RestorePackages.csproj",
+        "projectName": "RestorePackages",
+        "projectPath": "/home/igorjob/programming/c/KernelSocket-API/restore-packages/RestorePackages.csproj",
+        "packagesPath": "/home/igorjob/programming/c/KernelSocket-API/packages",
+        "outputPath": "/home/igorjob/programming/c/KernelSocket-API/restore-packages/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/igorjob/programming/c/KernelSocket-API/NuGet.config",
+          "/home/igorjob/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "native"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "native": {
+            "targetAlias": "native",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "native": {
+          "targetAlias": "native",
+          "dependencies": {
+            "Microsoft.Windows.SDK.CPP": {
+              "target": "Package",
+              "version": "[10.0.26100.7705, )"
+            },
+            "Microsoft.Windows.SDK.CPP.x64": {
+              "target": "Package",
+              "version": "[10.0.26100.7705, )"
+            },
+            "Microsoft.Windows.WDK.x64": {
+              "target": "Package",
+              "version": "[10.0.26100.6584, )"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.125/RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

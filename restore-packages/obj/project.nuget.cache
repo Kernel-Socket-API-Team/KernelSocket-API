@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "8g8IlSNAR+wVauQVawFQ5dcviBJX73KCbpaLzGVzapO6/llKLCmZ4QZrLajPvO1awwFpPl2tqx3TnudR8ynlIw==",
+  "success": true,
+  "projectFilePath": "/home/igorjob/programming/c/KernelSocket-API/restore-packages/RestorePackages.csproj",
+  "expectedPackageFiles": [
+    "/home/igorjob/programming/c/KernelSocket-API/packages/microsoft.windows.sdk.cpp/10.0.26100.7705/microsoft.windows.sdk.cpp.10.0.26100.7705.nupkg.sha512",
+    "/home/igorjob/programming/c/KernelSocket-API/packages/microsoft.windows.sdk.cpp.x64/10.0.26100.7705/microsoft.windows.sdk.cpp.x64.10.0.26100.7705.nupkg.sha512",
+    "/home/igorjob/programming/c/KernelSocket-API/packages/microsoft.windows.wdk.x64/10.0.26100.6584/microsoft.windows.wdk.x64.10.0.26100.6584.nupkg.sha512"
+  ],
+  "logs": []
+}
