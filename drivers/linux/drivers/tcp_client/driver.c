@@ -1,4 +1,3 @@
-// копия
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -15,8 +14,6 @@
 // в linux_protocols.c
 // Пока реализованы:
 // - linux_net_socket_create(...)
-// - linux_net_socket_close(...)
-// - linux_net_socket_bind(...)
 
 // Определяем необходимые для работы структуры и функции
 
@@ -114,10 +111,10 @@ static int __init minimal_driver_init(void) {
 
     net_socket_t* sock = NULL;
 
-    // IPv4, TCP, Тип TCP_CONNECTION - пока не важно какие
+    // IP, protocol, sock_type
     net_error_t status = linux_net_socket_create(NET_AF_INET4,
-        NET_PROTO_TCP,
-        NET_SOCK_TYPE_TCP_CONNECTION,
+        NET_PROTO_UDP,
+        NET_SOCK_TYPE_UDP,
         &sock);
 
     if (status != NET_SUCCESS) {
@@ -129,12 +126,8 @@ static int __init minimal_driver_init(void) {
     net_address_t addr;
     memset(&addr, 0, sizeof(addr));
     addr.family = NET_AF_INET4;
-
-    // Можно использовать linux_net_ntoh(...)
     addr.port = 0;
-
-    // Можно использовать linux_net_address_parse(...)
-    addr.addr.ipv4 = 0; // 0.0.0.0
+    addr.addr.ipv4 = 0;
 
     // Привязываем
     status = linux_net_socket_bind(sock, &addr);
@@ -149,6 +142,42 @@ static int __init minimal_driver_init(void) {
 
     printk(KERN_INFO "[driver] Socket created successfully at address %p\n",
         g_test_socket);
+
+    struct msghdr msgHdr = { 0 };
+    struct kvec kv;
+    struct sockaddr_in dest_addr;
+
+    // Настройка адреса получателя
+    memset(&dest_addr, 0, sizeof(dest_addr));
+    dest_addr.sin_family = AF_INET;
+    dest_addr.sin_port = htons(9003);
+
+    if (!in4_pton("192.168.203.1", -1, (u8*)&dest_addr.sin_addr.s_addr, -1, NULL)) {
+        printk(KERN_ERR "[driver] Failed to convert destination IP address\n");
+        linux_net_socket_close(sock);
+        return -EINVAL;
+    }
+
+    // Подготовка сообщения
+    char msg[13] = "Hello world!";
+    int len = (int)strlen(msg);
+    kv.iov_base = (void*)msg;
+    kv.iov_len = len;
+
+    msgHdr.msg_name = &dest_addr;
+    msgHdr.msg_namelen = sizeof(dest_addr);
+
+    // Отправка
+    printk(KERN_INFO "[driver] Sending to %pI4:%d\n", &dest_addr.sin_addr, ntohs(dest_addr.sin_port));
+    status = kernel_sendmsg(((PLINUX_SOCKET_IMPL)sock->context)->kernel_socket, &msgHdr, &kv, 1, len);
+
+    if (status < 0) {
+        printk(KERN_ERR "[driver] kernel_sendmsg failed: %d\n", status);
+    }
+    else {
+        printk(KERN_INFO "[driver] Sent %d bytes via kernel_sendmsg: %s\n", status, msg);
+    }
+
     return 0;
 }
 
@@ -323,8 +352,6 @@ net_error_t linux_net_socket_bind(net_socket_t* sock, const net_address_t* addr)
     }
 
     sock->addr = *addr;
-
-    debug_net_bind_info("AFTER_BIND", sock, addr);
 
     return NET_SUCCESS;
 }
