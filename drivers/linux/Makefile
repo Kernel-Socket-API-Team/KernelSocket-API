@@ -10,7 +10,7 @@ IMAGE_NAME = kernelsocket-builder
 CONTAINER_NAME = ks-build
 
 # Версия ядра, необходимо синхронизировать с версией которая будет на ВМ!!!
-KERNEL_VERSION := 6.8.0-101-generic
+KERNEL_VERSION := 6.8.0-107-generic
 
 # Текущая директория (монтируется в контейнер)
 WORKSPACE = $(realpath $(CURDIR)/../..)

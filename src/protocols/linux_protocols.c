@@ -150,23 +150,133 @@ net_error_t linux_net_socket_bind(net_socket_t* sock, const net_address_t* addr)
 
     sock->addr = *addr;
 
-    debug_net_bind_info("AFTER_BIND", sock, addr);
-
     return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_connect(net_socket_t* sock, const net_address_t* addr) {
-    sock = 0;
-    addr = 0;
-    return 0;
+    if (!sock || !addr)
+        return NET_ERROR_INVALID_PARAM;
+
+    PLINUX_SOCKET_IMPL impl = (PLINUX_SOCKET_IMPL)sock->context;
+    if (!impl || !impl->kernel_socket)
+        return NET_ERROR_INVALID_STATE;
+
+    int status;
+
+    if (addr->family == NET_AF_INET4) {
+        struct sockaddr_in remote_addr;
+        memset(&remote_addr, 0, sizeof(remote_addr));
+        remote_addr.sin_family = AF_INET;
+        remote_addr.sin_port = addr->port;
+        remote_addr.sin_addr.s_addr = addr->addr.ipv4;
+
+        status = kernel_connect(impl->kernel_socket,
+            (struct sockaddr*)&remote_addr,
+            sizeof(remote_addr), 0);
+    }
+    else if (addr->family == NET_AF_INET6) {
+        struct sockaddr_in6 remote_addr;
+        memset(&remote_addr, 0, sizeof(remote_addr));
+        remote_addr.sin6_family = AF_INET6;
+        remote_addr.sin6_port = addr->port;
+        memcpy(&remote_addr.sin6_addr, addr->addr.ipv6, 16);
+
+        status = kernel_connect(impl->kernel_socket,
+            (struct sockaddr*)&remote_addr,
+            sizeof(remote_addr), 0);
+    }
+    else {
+        return NET_ERROR_INVALID_PARAM;
+    }
+
+    if (status < 0) {
+        return convert_status_from_linux(status);
+    }
+
+    sock->remote_addr = *addr;
+
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_send(net_socket_t* sock, const void* data, size_t size, size_t* sent) {
-    sock = 0;
-    data = 0;
-    size = 0;
-    sent = 0;
-    return 0;
+
+    if (!sock || !data || size == 0)
+        return NET_ERROR_INVALID_PARAM;
+
+    PLINUX_SOCKET_IMPL impl = (PLINUX_SOCKET_IMPL)sock->context;
+    if (!impl)
+        return NET_ERROR_INVALID_STATE;
+
+    // Выбираем правильный сокет
+    struct socket* target = NULL;
+
+    if (sock->type == NET_SOCK_TYPE_TCP_LISTEN) {
+        // TCP сервер — шлём через active_client
+        if (!impl->active_client)
+            return NET_ERROR_INVALID_STATE;
+        target = impl->active_client;
+
+    }
+    else {
+        // TCP клиент или UDP — шлём через основной сокет
+        if (!impl->kernel_socket)
+            return NET_ERROR_INVALID_STATE;
+        target = impl->kernel_socket;
+    }
+
+    // Готовим данные для отправки
+    struct kvec kv;
+    kv.iov_base = (void*)data;
+    kv.iov_len = size;
+
+    struct msghdr msg;
+    memset(&msg, 0, sizeof(msg));
+
+    // Для UDP кладём адрес получателя
+    struct sockaddr_in  addr4;
+    struct sockaddr_in6 addr6;
+
+    if (sock->protocol == NET_PROTO_UDP) {
+
+        // Проверяем что remote_addr заполнен
+        if (sock->remote_addr.port == 0)
+            return NET_ERROR_INVALID_STATE;
+
+        if (sock->remote_addr.family == NET_AF_INET4) {
+
+            memset(&addr4, 0, sizeof(addr4));
+            addr4.sin_family = AF_INET;
+            addr4.sin_port = sock->remote_addr.port;
+            addr4.sin_addr.s_addr = sock->remote_addr.addr.ipv4;
+
+            msg.msg_name = &addr4;
+            msg.msg_namelen = sizeof(addr4);
+
+        }
+        else {
+
+            memset(&addr6, 0, sizeof(addr6));
+            addr6.sin6_family = AF_INET6;
+            addr6.sin6_port = sock->remote_addr.port;
+            memcpy(&addr6.sin6_addr, sock->remote_addr.addr.ipv6, 16);
+
+            msg.msg_name = &addr6;
+            msg.msg_namelen = sizeof(addr6);
+
+        }
+    }
+    // TCP — msg_name не нужен, соединение уже установлено
+
+    // Отправляем
+    int status = kernel_sendmsg(target, &msg, &kv, 1, size);
+    if (status < 0)
+        return convert_status_from_linux(status);
+
+    // Сколько байт отправили
+    if (sent)
+        *sent = (size_t)status;
+
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_accept(net_socket_t* server, net_socket_t** client_out) {

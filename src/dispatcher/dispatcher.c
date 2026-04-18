@@ -14,7 +14,8 @@ const net_vtable_dispatcher* vtable =
 // Реализация сокета (скрыта от пользователя)
 struct net_socket {
     net_protocol_t protocol;        // Тип транспортного протокола (TCP/UDP)
-    net_address_t addr;             // Настройки адреса сокета
+    net_address_t addr;             // Настройки локального адреса сокета
+    net_address_t remote_addr;      // Настройки удалённого адреса сокета
     
     net_error_t error;              // Храним последнюю ошибку, которая возникла при работе с сокетом
     void* last_error;               // Храним указатель на последнюю ошибку в контексте конкретной ОС (NTSTATUS ...)
