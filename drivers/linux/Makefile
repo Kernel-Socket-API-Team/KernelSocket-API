@@ -32,44 +32,15 @@ run:
 	docker run --rm -it \
 		--name $(CONTAINER_NAME) \
 		-v $(WORKSPACE):/workspace \
-		-w /workspace/drivers/linux \
+		-w /workspace/drivers/linux/drivers \
 		$(IMAGE_NAME) /bin/bash
-
-.PHONY: build
-build:
-	rm -rf $(TMP)
-	mkdir -p $(TMP)
-	mkdir -p $(BUILD)
-
-	cp -r $(SRC)/* $(TMP)/
-	make -C $(KDIR) M=$(TMP) modules
-	mv $(TMP)/*.ko $(BUILD)/
-
-	rm -rf $(TMP)
-
-.PHONY: build-tcp
-build-tcp:
-	$(MAKE) build BUILD_TYPE=tcp_client
-
-.PHONY: build-udp
-build-udp:
-	$(MAKE) build BUILD_TYPE=udp_client
-
-.PHONY: clean-docker
-clean-docker:
-	docker rmi $(IMAGE_NAME) 2>/dev/null || true
-
 
 .PHONY: help
 help:
 	@echo "Доступные команды Makefile:"
 	@echo "  build-image      - сборка Docker-образа"
 	@echo "  run              - запуск интерактивного контейнера"
-	@echo "  clean-docker     - полная очистка Docker"
 	@echo "  help             - показать эту справку"
-	@echo "  build-tcp        - сборка драйвера для теста tcp"
-	@echo "  build-udp        - сборка драйвера для теста udp"
-	@echo "  build            - сборка драйвера (по умолчанию для теста tcp)"
 	@echo "  help             - показать эту справку"
 
 # По умолчанию
