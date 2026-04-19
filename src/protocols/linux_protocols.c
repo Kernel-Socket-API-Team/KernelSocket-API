@@ -133,6 +133,7 @@ net_error_t linux_net_socket_bind(net_socket_t* sock, const net_address_t* addr)
 
         local_addr.sin6_family = AF_INET6;
         local_addr.sin6_port = addr->port;
+        local_addr.sin6_scope_id = addr->scope_id;
         memcpy(&local_addr.sin6_addr, addr->addr.ipv6, 16);
 
         status = kernel_bind(impl->kernel_socket,
@@ -179,6 +180,7 @@ net_error_t linux_net_socket_connect(net_socket_t* sock, const net_address_t* ad
         memset(&remote_addr, 0, sizeof(remote_addr));
         remote_addr.sin6_family = AF_INET6;
         remote_addr.sin6_port = addr->port;
+        remote_addr.sin6_scope_id = addr->scope_id;
         memcpy(&remote_addr.sin6_addr, addr->addr.ipv6, 16);
 
         status = kernel_connect(impl->kernel_socket,
@@ -258,6 +260,7 @@ net_error_t linux_net_socket_send(net_socket_t* sock, const void* data, size_t s
             memset(&addr6, 0, sizeof(addr6));
             addr6.sin6_family = AF_INET6;
             addr6.sin6_port = sock->remote_addr.port;
+            addr6.sin6_scope_id = sock->remote_addr.scope_id;
             memcpy(&addr6.sin6_addr, sock->remote_addr.addr.ipv6, 16);
 
             msg.msg_name = &addr6;
