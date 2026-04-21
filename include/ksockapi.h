@@ -119,6 +119,7 @@ typedef struct net_address {
         uint32_t ipv4;           // IPv4 адрес (в сетевом порядке)
         uint8_t ipv6[16];        // IPv6 адрес (в сетевом порядке)
     } addr;
+    uint32_t scope_id;           // Указание индекса сетевого интерфейса для Link-Local адресов
     char hostname[256];          // Человекочитаемое имя (опционально)
 } net_address_t;
 
