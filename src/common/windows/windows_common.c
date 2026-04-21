@@ -2,6 +2,12 @@
 
 WSK_CONTEXT g_WskContext = {0}; 
 
+WSK_CLIENT_DISPATCH WskAppDispatch = {
+    MAKE_WSK_VERSION(1, 0),     // Версия WSK 1.0
+    0,                          // Зарезервировано
+    NULL                        // ClientCallback (не используется)
+};
+
 net_error_t convert_status_from_windows(NTSTATUS ntstatus) {
     if (NT_SUCCESS(ntstatus)) {
         return NET_SUCCESS;
