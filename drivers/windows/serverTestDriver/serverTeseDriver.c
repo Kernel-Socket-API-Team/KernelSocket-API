@@ -1,5 +1,36 @@
 #include <ksockapi.h>
 
+
+/*
+ * Тестирование IPv6 и scope_id в kernel-драйвере
+ *
+ * Среда тестирования:
+ *   - Хост: Windows 10
+ *   - VM: Windows (гостевая) с сетевым адаптером VMware VMnet1 (Host-Only)
+ *   - Сервер: запущен на VM
+ *   - Клиент: ncat на хосте
+ *
+ * Настройка сети для IPv6:
+ *   1. На хосте добавлен ULA адрес на VMnet1 (индекс 6):
+ *      netsh interface ipv6 add address 6 fd00:dead:beef:2::1
+ *   2. На VM добавлен ULA адрес на Ethernet0 (индекс 9):
+ *      netsh interface ipv6 add address 9 fd00:dead:beef:2::2
+ *
+ * Результаты тестирования:
+ *   TCP через ULA адрес (без scope_id)      - работает
+ *   TCP через link-local адрес (с scope_id) - работает
+ *   UDP через ULA адрес                     - работает
+ *   UDP через link-local адрес (с scope_id) - работает
+ *   Корректное извлечение scope_id из адреса клиента
+ *   Корректное отображение scope_id в выводе
+ *
+ * Вывод:
+ *   Драйвер корректно обрабатывает IPv6 адреса с scope_id
+ *   и без него. link-local адреса (fe80::/10) требуют
+ *   обязательного указания scope_id для работы.
+ */
+
+
 #define PORT_TCP 4444
 #define PORT_UDP 4445
 #define BUFFER_SIZE 1024
@@ -30,16 +61,21 @@ VOID ServerThreadTCP(PVOID Context) {
                           &g_ServerSockTCP);
   if (err != NET_SUCCESS) goto exit;
 
-  // Привязка
+  // Привязка для TCP
   /*
   addr.family = NET_AF_INET6;
   net_htons(PORT_TCP, &addr.port);
   addr.addr.ipv4 = 0;*/
-
-  // Привязка для TCP
+  
+  /*
   addr.family = NET_AF_INET6;
   net_htons(PORT_TCP, &addr.port);
   memset(addr.addr.ipv6, 0, 16); // :: - все IPv6 интерфейсы
+  */
+
+  err = net_address_parse("[fe80::a921:2d1f:61fb:8942%9]", NET_AF_INET6, &addr);
+  net_htons(PORT_TCP, &addr.port);
+  if (err != NET_SUCCESS) goto close_server;
 
   err = net_socket_bind(g_ServerSockTCP, &addr);
   if (err != NET_SUCCESS) goto close_server;
@@ -73,7 +109,12 @@ VOID ServerThreadTCP(PVOID Context) {
       char ip_str[NET_ADDRSTRLEN];
       net_address_to_string(&client_addr, ip_str, sizeof(ip_str), TRUE);
 
-      DbgPrint("[SERVER_TCP] [%s] >> %s;\n", ip_str, buffer);
+      if (client_addr.family == NET_AF_INET6 && client_addr.scope_id != 0) {
+        DbgPrint("[SERVER_TCP] [%s scope_id=%u] >> %s;\n", ip_str,
+                 client_addr.scope_id, buffer);
+      } else {
+        DbgPrint("[SERVER_TCP] [%s] >> %s;\n", ip_str, buffer);
+      }
     }
 
     net_socket_close(client_sock);
@@ -110,15 +151,22 @@ VOID ServerThreadUDP(PVOID Context) {
                           &g_ServerSockUDP);
   if (err != NET_SUCCESS) goto exit;
 
-  // Привязка к порту
+  // Привязка для UDP
   /*
     addr.family = NET_AF_INET4;
     net_htons(PORT_UDP, &addr.port);
     addr.addr.ipv4 = 0;
   */
+
+  /*
   addr.family = NET_AF_INET6;
   net_htons(PORT_UDP, &addr.port);
   memset(addr.addr.ipv6, 0, 16); // :: - все IPv6 интерфейсы
+  */
+
+  err = net_address_parse("[fe80::a921:2d1f:61fb:8942%9]", NET_AF_INET6, &addr);
+  net_htons(PORT_UDP, &addr.port);
+  if (err != NET_SUCCESS) goto close_socket;
 
   err = net_socket_bind(g_ServerSockUDP, &addr);
   if (err != NET_SUCCESS) goto close_socket;
@@ -140,7 +188,12 @@ VOID ServerThreadUDP(PVOID Context) {
       char ip_str[NET_ADDRSTRLEN];
       net_address_to_string(&client_addr, ip_str, sizeof(ip_str), TRUE);
 
-      DbgPrint("[SERVER_UDP] [%s] >> %s\n", ip_str, buffer);
+      if (client_addr.family == NET_AF_INET6 && client_addr.scope_id != 0) {
+        DbgPrint("[SERVER_UDP] [%s scope_id=%u] >> %s\n", ip_str,
+                 client_addr.scope_id, buffer);
+      } else {
+        DbgPrint("[SERVER_UDP] [%s] >> %s\n", ip_str, buffer);
+      }
     }
   }
 

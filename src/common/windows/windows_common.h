@@ -26,6 +26,16 @@ extern WSK_CLIENT_DISPATCH WskAppDispatch;
 // Конвертация ошибок
 net_error_t convert_status_from_windows(NTSTATUS ntstatus);
 
+/**
+ * Преобразует IPv6 строку с именем интерфейса в строку с числовым scope_id
+ * 
+ * @param str - строка вида "[fe80::1%Ethernet0]" или "[fe80::1%13]"
+ * @param output - буфер для выходной строки с числовым scope_id
+ * @param output_size - размер буфера
+ * @return STATUS_SUCCESS или ошибка
+ */
+NTSTATUS normalize_ipv6_scope_id(const char* str, char* output, SIZE_T output_size);
+
 // Контекст сокета (упрощенный)
 typedef struct WINDOWS_SOCKET_IMPL {
     PWSK_SOCKET wsk_socket;         // WSK сокет

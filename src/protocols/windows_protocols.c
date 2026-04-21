@@ -225,7 +225,7 @@ net_error_t windows_net_socket_bind(net_socket_t* sock, const net_address_t* add
         pAddr6->sin6_port = addr->port;
         RtlCopyMemory(&pAddr6->sin6_addr, addr->addr.ipv6, 16);
         pAddr6->sin6_flowinfo = 0;
-        pAddr6->sin6_scope_id = 0;
+        pAddr6->sin6_scope_id = addr->scope_id;
         pSockAddr = (PSOCKADDR)pAddr6;
         addr_size = sizeof(SOCKADDR_IN6);
     }
@@ -387,6 +387,7 @@ net_error_t windows_net_socket_accept(net_socket_t* server, net_socket_t** clien
                 client->addr.family = NET_AF_INET6;
                 client->addr.port = ipv6->sin6_port;
                 RtlCopyMemory(client->addr.addr.ipv6, &ipv6->sin6_addr, 16);
+                client->addr.scope_id = ipv6->sin6_scope_id;
             }
         } else {
             // Заполняем нулями
@@ -500,10 +501,12 @@ net_error_t windows_net_socket_receive(net_socket_t* sock, void* buffer, size_t 
                 from_addr->family = NET_AF_INET4;
                 from_addr->port = addr.Ipv4.sin_port;
                 from_addr->addr.ipv4 = addr.Ipv4.sin_addr.s_addr;
+                 from_addr->scope_id = 0;
             } else if (addr.si_family == AF_INET6) {
                 from_addr->family = NET_AF_INET6;
                 from_addr->port = addr.Ipv6.sin6_port;
                 RtlCopyMemory(from_addr->addr.ipv6, addr.Ipv6.sin6_addr.u.Byte, 16);
+                from_addr->scope_id = addr.Ipv6.sin6_scope_id;
             }
         }
     }
