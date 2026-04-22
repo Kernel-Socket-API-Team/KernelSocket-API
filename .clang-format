@@ -1,0 +1,21 @@
+# .clang-format
+# Запуск: find . -regex '.*\.\(c\|cpp\|h\)' | xargs clang-format -i -style=file
+Language: Cpp
+BasedOnStyle: Microsoft
+
+# Отступы
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never # Рекомендуется использовать пробелы вместо табуляции
+
+# Скобки (стиль Allman, когда скобка на новой строке)
+BreakBeforeBraces: Allman
+
+# Максимальная длина строки
+ColumnLimit: 120
+
+# Выравнивание указателей и ссылок
+PointerAlignment: Left # int* ptr;
+
+# Разрешить короткие функции на одной строке
+AllowShortFunctionsOnASingleLine: Empty
