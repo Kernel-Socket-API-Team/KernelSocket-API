@@ -1,20 +1,19 @@
-// echo_server_windows.c
-// Компиляция в Developer PowerShell for VS: cl echo_server_windows.c ws2_32.lib /Fe:build\echo_server_windows.exe /Fo:build\echo_server_windows.obj
-// Запуск:     echo_server_windows.exe <port> <tcp|udp> <ipv4|ipv6>
+// echo_server_linux.c
+// Компиляция: gcc echo_server_linux.c -o ./build/echo_server_linux
+// Запуск:     ./echo_server_linux <port> <tcp|udp> <ipv4|ipv6>
 
-#include <winsock2.h>
-#include <ws2tcpip.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#pragma comment(lib, "ws2_32.lib")
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <net/if.h>
 
 #define BUFFER_SIZE 1024
 
 int main(int argc, char* argv[]) {
-    WSADATA wsaData;
-    SOCKET sock = INVALID_SOCKET;
+    int sock = -1;
     struct sockaddr_storage server_addr;
     int port;
     int is_tcp;
@@ -33,22 +32,15 @@ int main(int argc, char* argv[]) {
     is_tcp = (strcmp(argv[2], "tcp") == 0);
     is_ipv6 = (strcmp(argv[3], "ipv6") == 0);
     
-    // Инициализация Winsock
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-        printf("WSAStartup failed: %d\n", WSAGetLastError());
-        return 1;
-    }
-    
     // Создание сокета
     if (is_tcp) {
-        sock = socket(is_ipv6 ? AF_INET6 : AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        sock = socket(is_ipv6 ? AF_INET6 : AF_INET, SOCK_STREAM, 0);
     } else {
-        sock = socket(is_ipv6 ? AF_INET6 : AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        sock = socket(is_ipv6 ? AF_INET6 : AF_INET, SOCK_DGRAM, 0);
     }
     
-    if (sock == INVALID_SOCKET) {
-        printf("Socket creation failed: %d\n", WSAGetLastError());
-        WSACleanup();
+    if (sock < 0) {
+        perror("Socket creation failed");
         return 1;
     }
     
@@ -59,6 +51,7 @@ int main(int argc, char* argv[]) {
         addr6->sin6_family = AF_INET6;
         addr6->sin6_port = htons(port);
         addr6->sin6_addr = in6addr_any;
+        addr6->sin6_scope_id = 0;
     } else {
         struct sockaddr_in* addr4 = (struct sockaddr_in*)&server_addr;
         addr4->sin_family = AF_INET;
@@ -67,11 +60,10 @@ int main(int argc, char* argv[]) {
     }
     
     // Привязка
-    int addr_len = is_ipv6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
-    if (bind(sock, (struct sockaddr*)&server_addr, addr_len) == SOCKET_ERROR) {
-        printf("Bind failed: %d\n", WSAGetLastError());
-        closesocket(sock);
-        WSACleanup();
+    socklen_t addr_len = is_ipv6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
+    if (bind(sock, (struct sockaddr*)&server_addr, addr_len) < 0) {
+        perror("Bind failed");
+        close(sock);
         return 1;
     }
     
@@ -82,10 +74,9 @@ int main(int argc, char* argv[]) {
     
     if (is_tcp) {
         // TCP сервер
-        if (listen(sock, SOMAXCONN) == SOCKET_ERROR) {
-            printf("Listen failed: %d\n", WSAGetLastError());
-            closesocket(sock);
-            WSACleanup();
+        if (listen(sock, SOMAXCONN) < 0) {
+            perror("Listen failed");
+            close(sock);
             return 1;
         }
         
@@ -93,11 +84,11 @@ int main(int argc, char* argv[]) {
         
         while (1) {
             struct sockaddr_storage client_addr;
-            int addr_len = sizeof(client_addr);
-            SOCKET client_sock = accept(sock, (struct sockaddr*)&client_addr, &addr_len);
+            socklen_t addr_len = sizeof(client_addr);
+            int client_sock = accept(sock, (struct sockaddr*)&client_addr, &addr_len);
             
-            if (client_sock == INVALID_SOCKET) {
-                printf("Accept failed: %d\n", WSAGetLastError());
+            if (client_sock < 0) {
+                perror("Accept failed");
                 continue;
             }
             
@@ -124,7 +115,7 @@ int main(int argc, char* argv[]) {
                 printf("  Echoed: %s\n", buffer);
             }
             
-            closesocket(client_sock);
+            close(client_sock);
             printf("[Client] Disconnected\n---\n");
         }
     } else {
@@ -133,14 +124,14 @@ int main(int argc, char* argv[]) {
         
         char buffer[BUFFER_SIZE];
         struct sockaddr_storage client_addr;
-        int addr_len = sizeof(client_addr);
+        socklen_t addr_len = sizeof(client_addr);
         
         while (1) {
             int bytes = recvfrom(sock, buffer, BUFFER_SIZE - 1, 0,
                                   (struct sockaddr*)&client_addr, &addr_len);
             
-            if (bytes == SOCKET_ERROR) {
-                printf("recvfrom failed: %d\n", WSAGetLastError());
+            if (bytes < 0) {
+                perror("recvfrom failed");
                 continue;
             }
             
@@ -164,7 +155,6 @@ int main(int argc, char* argv[]) {
         }
     }
     
-    closesocket(sock);
-    WSACleanup();
+    close(sock);
     return 0;
 }
