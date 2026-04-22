@@ -128,7 +128,7 @@ exit:
     // Закрытие потока ... 
 ```
 
-### Ммодификация UDP сервера для использования IPV6
+### Модификация UDP сервера для использования IPV6
 ```c
 // Для того чтобы настроить сервер для приема IPV6 проведем следующие модификации:
 
@@ -223,4 +223,23 @@ err = net_socket_create(NET_AF_INET6, NET_PROTO_TCP, NET_SOCK_TYPE_TCP_LISTEN, &
 addr.family = NET_AF_INET6;      // NET_AF_INET6 вместо NET_AF_INET4
 net_htons(PORT_TCP, &addr.port); // Привязка к порту (не изм.) 
 memset(addr.addr.ipv6, 0, 16)    // Принимаем все IPV6 адреса
+```
+
+### Использование net_address_parse для настройки сервера
+
+Вместо ручного заполнения полей структуры `net_address_t` (установка `family`, обнуление `addr.ipv6`, указание порта) рекомендуется использовать функцию `net_address_parse`. Это делает код более читаемым, менее подверженным ошибкам и позволяет легко работать с IPv6 link-local адресами, где требуется указание `scope_id`.
+
+```c
+// Вместо ручного заполнения структуры следует использовать net_address_parse
+net_address_parse("::", NET_AF_INET6, &addr);
+// или
+net_address_parse("0.0.0.0", NET_AF_INET4, &addr);
+
+// И в случае использования scope_id
+
+// Через числовой индекс интерфейса
+net_address_parse("[fe80::1%9]", NET_AF_INET6, &addr);
+
+// Через имя интерфейса (преобразуется в индекс автоматически)
+net_address_parse("[fe80::1%Ethernet0]", NET_AF_INET6, &addr); 
 ```
