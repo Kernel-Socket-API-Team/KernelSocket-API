@@ -21,6 +21,7 @@ net_error_t net_socket_connect(net_socket_t* sock, const net_address_t* addr);
 ### Описание
 
 Устанавливает соединение с удалённым хостом и/или только сохраняет адрес назначения внутри сокета для TCP/UDP соответственно.
+Вызов функции обязателен для каждого из протоколов.
 
 Поведение зависит от протокола:
 
@@ -32,7 +33,7 @@ net_error_t net_socket_connect(net_socket_t* sock, const net_address_t* addr);
 ### Параметры
 
 - **[in]** `sock` — сокет для подключения (должен быть создан с `NET_SOCK_TYPE_TCP_CONNECTION` или `NET_SOCK_TYPE_UDP`)
-- **[in]** `addr` — адрес удалённого хоста. Для IPv6 link-local адресов (`fe80::`) поле `scope_id` должно быть заполнено — см. [Работа с адресами](./addresses.md)
+- **[in]** `addr` — адрес удалённого хоста. Для IPv6 link-local адресов (`fe80::`) поле `scope_id` должно быть заполнено — см. [Работа с адресами](./addressing.md)
 
 ### Возвращаемые значения
 
@@ -57,7 +58,7 @@ net_error_t net_socket_send(net_socket_t* sock, const void* data, size_t size, s
 
 Поведение зависит от протокола:
 
-- **TCP** — отправляет данные в установленное соединение. Для серверного сокета (`NET_SOCK_TYPE_TCP_LISTEN`) данные отправляются подключённому клиенту через внутренний `active_client`. Для клиентского сокета (`NET_SOCK_TYPE_TCP_CONNECTION`) — напрямую через основной сокет.
+- **TCP** — отправляет данные в установленное предварительно соединение через `net_socket_connect`.
 - **UDP** — отправляет датаграмму на адрес, сохранённый при вызове `net_socket_connect`. Адрес должен быть установлен заранее — без него функция вернёт `NET_ERROR_INVALID_STATE`.
 
 ### Параметры
@@ -88,14 +89,13 @@ net_socket_create(NET_AF_INET4, NET_PROTO_UDP, NET_SOCK_TYPE_UDP, &sock);
 
 // Привязываем к любому интерфейсу (опционально)
 net_address_t local;
-memset(&local, 0, sizeof(local));
-local.family = NET_AF_INET4;
+net_address_parse("0.0.0.0", NET_AF_INET4, &remote);
 net_socket_bind(sock, &local);
 
 // Устанавливаем адрес получателя
 net_address_t remote;
 net_address_parse("192.168.1.100", NET_AF_INET4, &remote);
-remote.port = htons(9003);
+net_htons(9003, remote.port);
 net_socket_connect(sock, &remote);
 
 // Отправляем
@@ -115,14 +115,13 @@ net_socket_create(NET_AF_INET6, NET_PROTO_TCP, NET_SOCK_TYPE_TCP_CONNECTION, &so
 
 // Привязываем к любому интерфейсу (опционально)
 net_address_t local;
-memset(&local, 0, sizeof(local));
-local.family = NET_AF_INET6;
+net_address_parse("::", NET_AF_INET6, &local);
 net_socket_bind(sock, &local);
 
 // Через % указываем интерфес (default=0)
 net_address_t remote;
 net_address_parse("fe80::2889:bf2e:df6c:1e81%ens33", NET_AF_INET6, &remote);
-remote.port = htons(9001);
+net_htons(9001, remote.port);
 net_socket_connect(sock, &remote);
 
 // Отправляем
