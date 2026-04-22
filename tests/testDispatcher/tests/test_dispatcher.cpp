@@ -1,11 +1,11 @@
-#include <gtest/gtest.h>
-#include "GlobalContext/GlobalContext.hpp"
 #include "../../../include/ksockapi.h"
+#include "GlobalContext/GlobalContext.hpp"
+#include <gtest/gtest.h>
 
 #ifdef _WIN32
-    static const bool platform = 1;
+static const bool platform = 1;
 #else
-    static const bool platform = 0;
+static const bool platform = 0;
 #endif
 
 // Шаблон: <имя проверяемой функции>
@@ -20,7 +20,7 @@ TEST(DispatcherTest, net_initialize_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_initialize");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_initialize");
 }
 
@@ -32,7 +32,7 @@ TEST(DispatcherTest, net_cleanup_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_cleanup");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_cleanup");
 }
 
@@ -44,7 +44,7 @@ TEST(DispatcherTest, net_socket_create_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_create");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_create");
 }
 
@@ -56,7 +56,7 @@ TEST(DispatcherTest, net_socket_close_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_close");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_close");
 }
 
@@ -68,7 +68,7 @@ TEST(DispatcherTest, net_socket_set_options_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_set_options");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_set_options");
 }
 
@@ -80,7 +80,7 @@ TEST(DispatcherTest, net_socket_get_options_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_get_options");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_get_options");
 }
 
@@ -92,7 +92,7 @@ TEST(DispatcherTest, net_socket_bind_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_bind");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_bind");
 }
 
@@ -104,7 +104,7 @@ TEST(DispatcherTest, net_socket_connect_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_connect");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_connect");
 }
 
@@ -116,7 +116,7 @@ TEST(DispatcherTest, net_socket_listen_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_listen");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_listen");
 }
 
@@ -128,7 +128,7 @@ TEST(DispatcherTest, net_socket_accept_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_accept");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_accept");
 }
 
@@ -140,7 +140,7 @@ TEST(DispatcherTest, net_socket_send_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_send");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_send");
 }
 
@@ -152,7 +152,7 @@ TEST(DispatcherTest, net_socket_send_to_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_send_to");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_send_to");
 }
 
@@ -164,7 +164,7 @@ TEST(DispatcherTest, net_socket_receive_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_receive");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_receive");
 }
 
@@ -176,7 +176,7 @@ TEST(DispatcherTest, net_socket_receive_from_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_receive_from");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_receive_from");
 }
 
@@ -188,7 +188,7 @@ TEST(DispatcherTest, net_address_parse_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_address_parse");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_address_parse");
 }
 
@@ -200,7 +200,7 @@ TEST(DispatcherTest, net_address_to_string_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_address_to_string");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_address_to_string");
 }
 
@@ -212,7 +212,7 @@ TEST(DispatcherTest, net_socket_get_local_address_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_get_local_address");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_get_local_address");
 }
 
@@ -224,7 +224,7 @@ TEST(DispatcherTest, net_socket_get_remote_address_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_get_remote_address");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_get_remote_address");
 }
 
@@ -236,7 +236,7 @@ TEST(DispatcherTest, net_socket_set_nonblocking_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_set_nonblocking");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_set_nonblocking");
 }
 
@@ -248,7 +248,7 @@ TEST(DispatcherTest, net_socket_can_read_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_can_read");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_can_read");
 }
 
@@ -260,7 +260,7 @@ TEST(DispatcherTest, net_socket_can_write_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_can_write");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_can_write");
 }
 
@@ -272,7 +272,7 @@ TEST(DispatcherTest, net_socket_last_error_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_socket_last_error");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_socket_last_error");
 }
 
@@ -284,6 +284,6 @@ TEST(DispatcherTest, net_error_string_test)
 
     if (platform)
         ASSERT_EQ(globalContext, "windows_net_error_string");
-    else 
+    else
         ASSERT_EQ(globalContext, "linux_net_error_string");
 }
