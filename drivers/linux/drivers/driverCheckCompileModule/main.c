@@ -1,6 +1,6 @@
-#include <linux/module.h>
-#include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
 
 #include "../../../../include/ksockapi.h"
 #include "../../../../src/adapters/linux/linux_adapter.h"
