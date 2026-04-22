@@ -1,20 +1,21 @@
-// echo_client_windows.c
-// Компиляция в Developer PowerShell for VS: cl echo_client_windows.c ws2_32.lib /Fe:build\echo_client_windows.exe /Fo:build\echo_client_windows.obj
-// Запуск:     echo_client_windows.exe <server_ip> <port> <tcp|udp> <ipv4|ipv6>
+// echo_client_linux.c
+// Компиляция: gcc echo_client_linux.c -o echo_client_linux
+// Запуск:     ./echo_client_linux <server_ip> <port> <tcp|udp> <ipv4|ipv6>
+// Пример:     ./echo_client_linux 127.0.0.1 4444 tcp ipv4
+//             ./echo_client_linux "fe80::1%ens33" 4445 udp ipv6
 
-#include <winsock2.h>
-#include <ws2tcpip.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#pragma comment(lib, "ws2_32.lib")
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <net/if.h>
 
 #define BUFFER_SIZE 1024
 
 int main(int argc, char* argv[]) {
-    WSADATA wsaData;
-    SOCKET sock = INVALID_SOCKET;
+    int sock = -1;
     struct sockaddr_storage server_addr;
     int port;
     int is_tcp;
@@ -27,7 +28,7 @@ int main(int argc, char* argv[]) {
         printf("Examples:\n");
         printf("  %s 127.0.0.1 4444 tcp ipv4\n", argv[0]);
         printf("  %s ::1 4444 tcp ipv6\n", argv[0]);
-        printf("  %s \"fe80::1%%6\" 4445 udp ipv6\n", argv[0]);
+        printf("  %s \"fe80::1%%ens33\" 4445 udp ipv6\n", argv[0]);
         return 1;
     }
     
@@ -36,22 +37,15 @@ int main(int argc, char* argv[]) {
     is_tcp = (strcmp(argv[3], "tcp") == 0);
     is_ipv6 = (strcmp(argv[4], "ipv6") == 0);
     
-    // Инициализация Winsock
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-        printf("WSAStartup failed: %d\n", WSAGetLastError());
-        return 1;
-    }
-    
     // Создание сокета
     if (is_tcp) {
-        sock = socket(is_ipv6 ? AF_INET6 : AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        sock = socket(is_ipv6 ? AF_INET6 : AF_INET, SOCK_STREAM, 0);
     } else {
-        sock = socket(is_ipv6 ? AF_INET6 : AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        sock = socket(is_ipv6 ? AF_INET6 : AF_INET, SOCK_DGRAM, 0);
     }
     
-    if (sock == INVALID_SOCKET) {
-        printf("Socket creation failed: %d\n", WSAGetLastError());
-        WSACleanup();
+    if (sock < 0) {
+        perror("Socket creation failed");
         return 1;
     }
     
@@ -63,7 +57,7 @@ int main(int argc, char* argv[]) {
         addr6->sin6_family = AF_INET6;
         addr6->sin6_port = htons(port);
         
-        // Парсинг IPv6 адреса (поддерживает scope_id)
+        // Парсинг IPv6 адреса (поддерживает scope_id через %)
         char ip_str[256];
         char* percent = strchr(server_ip, '%');
         
@@ -71,7 +65,8 @@ int main(int argc, char* argv[]) {
             size_t len = percent - server_ip;
             strncpy(ip_str, server_ip, len);
             ip_str[len] = '\0';
-            addr6->sin6_scope_id = atoi(percent + 1);
+            // Преобразуем имя интерфейса в индекс
+            addr6->sin6_scope_id = if_nametoindex(percent + 1);
         } else {
             strcpy(ip_str, server_ip);
             addr6->sin6_scope_id = 0;
@@ -79,8 +74,7 @@ int main(int argc, char* argv[]) {
         
         if (inet_pton(AF_INET6, ip_str, &addr6->sin6_addr) != 1) {
             printf("Invalid IPv6 address: %s\n", server_ip);
-            closesocket(sock);
-            WSACleanup();
+            close(sock);
             return 1;
         }
     } else {
@@ -90,8 +84,7 @@ int main(int argc, char* argv[]) {
         
         if (inet_pton(AF_INET, server_ip, &addr4->sin_addr) != 1) {
             printf("Invalid IPv4 address: %s\n", server_ip);
-            closesocket(sock);
-            WSACleanup();
+            close(sock);
             return 1;
         }
     }
@@ -102,13 +95,12 @@ int main(int argc, char* argv[]) {
            server_ip, port);
     
     // Подключение (для TCP) или просто запоминание адреса (для UDP)
-    int addr_len = is_ipv6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
+    socklen_t addr_len = is_ipv6 ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
     
     if (is_tcp) {
-        if (connect(sock, (struct sockaddr*)&server_addr, addr_len) == SOCKET_ERROR) {
-            printf("Connect failed: %d\n", WSAGetLastError());
-            closesocket(sock);
-            WSACleanup();
+        if (connect(sock, (struct sockaddr*)&server_addr, addr_len) < 0) {
+            perror("Connect failed");
+            close(sock);
             return 1;
         }
         printf("Connected! Enter messages (type 'quit' to exit)\n\n");
@@ -130,8 +122,8 @@ int main(int argc, char* argv[]) {
         if (strcmp(buffer, "quit") == 0) break;
         
         // Отправка
-        if (send(sock, buffer, strlen(buffer), 0) == SOCKET_ERROR) {
-            printf("Send failed: %d\n", WSAGetLastError());
+        if (send(sock, buffer, strlen(buffer), 0) < 0) {
+            perror("Send failed");
             break;
         }
         printf("  Sent: %s\n", buffer);
@@ -147,8 +139,6 @@ int main(int argc, char* argv[]) {
         printf("  Echoed: %s\n", buffer);
     }
     
-    closesocket(sock);
-    WSACleanup();
-    
+    close(sock);
     return 0;
 }
