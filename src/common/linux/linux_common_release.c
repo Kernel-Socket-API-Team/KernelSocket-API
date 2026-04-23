@@ -27,22 +27,57 @@ net_error_t linux_net_address_parse(const char* str, net_family_t ip_family, net
 
     int status = 0;
 
+    struct sockaddr_storage sock_addr;
+
     if (ip_family == NET_AF_INET4)
     {
-        status = in4_pton(str, -1, (u8 *)&addr.addr.ipv4, -1, NULL);
+        const char * ip4_ptr = str;
+        const char * port_ptr = strchr(str, ':');
+
+        char ip4_buf[NET_IPV4_PORT_STR_MAX];
+        strncpy(ip4_buf, ip4_ptr, (size_t)(port_ptr - ip4_ptr));
+
+        ++port_ptr;
+
+        status = inet_pton_with_scope(&init_net, AF_INET, ip4_buf, port_ptr, &sock_addr);
+
+        struct sockaddr_in * ip4_addr = (struct sockaddr_in *)&sock_addr;
 
         if (status)
         {
-            addr->family = ip_family;
+            addr->family = ip4_addr->sin_family;
+            addr->port = ip4_addr->sin_port;
+            addr->addr.ipv4 = ip4_addr->sin_addr.s_addr;
+            addr->scope_id = 0;
         }
     }
     else if (ip_family == NET_AF_INET6)
     {
-        status = in6_pton(str, -1, (u8 *)&addr.addr.ipv6, -1, NULL);
+        if (*str == '[')
+        {
+            const char * ip6_ptr = str;
+            const char * port_ptr = strchr(str, ']');
+
+            char ip6_buf[NET_IPV6_PORT_STR_MAX];
+            strncpy(ip6_buf, ip6_ptr, (size_t)(port_ptr - ip6_ptr));
+
+            port_ptr += 2;
+
+            status = inet_pton_with_scope(&init_net, AF_INET, ip6_buf, port_ptr, &sock_addr);
+        }
+        else
+        {
+            status = inet_pton_with_scope(&init_net, AF_INET6, str, NULL, &sock_addr);
+        }
+
+        struct sockaddr_in6 * ip6_addr = (struct sockaddr_in *)&sock_addr;
 
         if (status)
         {
-            addr->family = ip_family;
+            addr->family = ip6_addr->sin6_family;
+            addr->port = ip6_addr->sin6_port;
+            memcpy(addr->addr.ipv6, ip6_addr->sin6_addr.u6_addr8, 16);
+            addr->scope_id = ip6_addr->sin6_scope_id;
         }
     }
 

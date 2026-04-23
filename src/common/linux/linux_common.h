@@ -5,13 +5,6 @@
 #include "../common.h"
 #include <linux/init.h>
 #include <linux/kernel.h>
-<<<<<<< HEAD
-#include <linux/netdevice.h>
-#include <linux/inet.h>
-#include <inttypes.h>
-#include <string.h>
-#include <stdio.h>
-=======
 #include <linux/module.h>
 
 // Работа с сокетами
@@ -41,6 +34,5 @@ typedef struct LINUX_SOCKET_IMPL
     struct socket* kernel_socket; // kernel socket
     struct socket* active_client; // Для TCP клиента
 } LINUX_SOCKET_IMPL, *PLINUX_SOCKET_IMPL;
->>>>>>> platform/linux
 
 #endif
