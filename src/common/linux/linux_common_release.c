@@ -1,12 +1,5 @@
 #include "linux_common.h"
 
-#include "windows_common.h"
-#include <arpa/inet.h>
-#include <netinet/ip.h>
-#include <inttypes.h>
-#include <stdio.h>
-#include <string.h>
-
 net_error_t linux_net_register () {
     return 0;
 }
@@ -34,24 +27,20 @@ net_error_t linux_net_address_parse(const char* str, net_family_t ip_family, net
 
     if (ip_family == NET_AF_INET4)
     {
-        struct in_addr ip4;
-        status = inet_pton(AF_INET, str, &ip4);
+        status = in4_pton(str, -1, (u8 *)&addr.addr.ipv4, -1, NULL);
 
         if (status)
         {
             addr->family = ip_family;
-            addr->addr.ipv4 = ip4.s_addr;
         }
     }
     else if (ip_family == NET_AF_INET6)
     {
-        struct in6_addr ip6;
-        status = inet_pton(AF_INET6, str, &ip6);
+        status = in6_pton(str, -1, (u8 *)&addr.addr.ipv6, -1, NULL);
 
         if (status)
         {
             addr->family = ip_family;
-            memcpy(addr->addr.ipv6, ip6.__in6_u.__u6_addr8, 16);
         }
     }
 
