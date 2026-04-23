@@ -4,16 +4,18 @@ net_error_t linux_net_register () {
     return 0;
 }
 
-net_error_t linux_net_activate (const size_t limitMS) {
-    limitMS = 0;
+net_error_t linux_net_activate(const size_t limitMS)
+{
     return 0;
 }
 
-net_error_t linux_net_is_ready() {
+net_error_t linux_net_is_ready()
+{
     return 0;
 }
 
-net_error_t linux_net_cleanup () {
+net_error_t linux_net_cleanup()
+{
     return 0;
 }
 
@@ -54,13 +56,15 @@ net_error_t linux_net_address_parse(const char* str, net_family_t ip_family, net
     }
 }
 
-net_error_t linux_net_htons(uint16_t hostshort, uint16_t* netshort) {
+net_error_t linux_net_htons(uint16_t hostshort, uint16_t* netshort)
+{
     hostshort = 0;
     netshort = 0;
     return 0;
 }
 
-net_error_t linux_net_ntohs(uint16_t netshort, uint16_t* hostshort) {
+net_error_t linux_net_ntohs(uint16_t netshort, uint16_t* hostshort)
+{
     netshort = 0;
     hostshort = 0;
     return 0;
