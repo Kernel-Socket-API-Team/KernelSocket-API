@@ -269,12 +269,13 @@ net_error_t windows_net_socket_bind(net_socket_t* sock, const net_address_t* add
 }
 
 // Данная функция требует тестов!!!!
-net_error_t windows_net_socket_connect(net_socket_t *sock, const net_address_t *addr) {
+net_error_t windows_net_socket_connect(net_socket_t *sock,
+                                       const net_address_t *addr) {
   if (!sock || !addr)
     return NET_ERROR_INVALID_PARAM;
 
-  if (sock->type != NET_SOCK_TYPE_TCP_CONNECTION ||
-      sock->protocol != NET_PROTO_TCP)
+  // Слушающий TCP сокет не имеет права на connect
+  if (sock->type == NET_SOCK_TYPE_TCP_LISTEN)
     return NET_ERROR_INVALID_PROTOCOL;
 
   if (sock->addr.family != addr->family)
@@ -287,18 +288,25 @@ net_error_t windows_net_socket_connect(net_socket_t *sock, const net_address_t *
   if (!impl->wsk_socket->Dispatch)
     return NET_ERROR_INVALID_VTABLE;
 
+  // --- UDP: реального соединения нет, просто сохраняем адрес получателя ---
+  if (sock->protocol == NET_PROTO_UDP) {
+    sock->addr = *addr;
+    return NET_SUCCESS;
+  }
+
+  // --- TCP: реальный three-way handshake ---
+  if (sock->type != NET_SOCK_TYPE_TCP_CONNECTION)
+    return NET_ERROR_INVALID_PROTOCOL;
+
   NTSTATUS status;
 
-  // WSK требует bind перед connect. Если сокет ещё не привязан — привязываем к
-  // ANY:0 Определяем "не привязан" по нулевому family в сохранённом адресе
-  // (после bind выше в windows_net_socket_bind sock->addr копируется из
-  // пользовательского addr)
+  // WSK требует, чтобы сокет был привязан (bound) до connect.
+  // Если пользователь сам не вызвал bind — привязываем к ANY:0.
   BOOLEAN need_bind = FALSE;
   if (sock->addr.family == NET_AF_INET4) {
     if (sock->addr.addr.ipv4 == 0 && sock->addr.port == 0)
       need_bind = TRUE;
   } else if (sock->addr.family == NET_AF_INET6) {
-    // проверяем, что ipv6 адрес весь нулевой и порт 0
     BOOLEAN all_zero = TRUE;
     for (int i = 0; i < 16; ++i) {
       if (sock->addr.addr.ipv6[i] != 0) {
@@ -315,7 +323,8 @@ net_error_t windows_net_socket_connect(net_socket_t *sock, const net_address_t *
     RtlZeroMemory(&any_addr, sizeof(any_addr));
     any_addr.family = sock->addr.family;
     any_addr.port = 0;
-    // addr внутри уже занулен RtlZeroMemory
+    // scope_id = 0 для ANY-адреса — это корректно
+
     net_error_t be = windows_net_socket_bind(sock, &any_addr);
     if (be != NET_SUCCESS)
       return be;
@@ -338,7 +347,7 @@ net_error_t windows_net_socket_connect(net_socket_t *sock, const net_address_t *
     p6->sin6_port = addr->port;
     RtlCopyMemory(&p6->sin6_addr, addr->addr.ipv6, 16);
     p6->sin6_flowinfo = 0;
-    p6->sin6_scope_id = 0;
+    p6->sin6_scope_id = addr->scope_id; // scope_id для link-local IPv6
     pRemote = (PSOCKADDR)p6;
   } else {
     return NET_ERROR_INVALID_PARAM;
@@ -365,9 +374,11 @@ net_error_t windows_net_socket_connect(net_socket_t *sock, const net_address_t *
   if (!NT_SUCCESS(status))
     return convert_status_from_windows(status);
 
-  // После успешного connect — этот сокет активный для send/receive
+  // После успешного TCP connect этот сокет сам становится "активным"
+  // для последующих send/receive — делаем поведение симметричным с accept
   impl->active_client = impl->wsk_socket;
 
+  // Сохраняем адрес пира
   sock->addr = *addr;
 
   return NET_SUCCESS;
@@ -379,29 +390,17 @@ net_error_t windows_net_socket_send(net_socket_t *sock, const void *data,
   if (!sock || !data || size == 0)
     return NET_ERROR_INVALID_PARAM;
 
-  if (sock->protocol != NET_PROTO_TCP)
-    return NET_ERROR_INVALID_PROTOCOL;
-
   PWINDOWS_SOCKET_IMPL impl = (PWINDOWS_SOCKET_IMPL)sock->context;
-  if (!impl)
+  if (!impl || !impl->wsk_socket)
     return NET_ERROR_INVALID_STATE;
 
-  // Для TCP работаем через active_client: он установлен либо в accept
-  // (серверная сторона), либо в connect (клиентская сторона)
-  PWSK_SOCKET target = impl->active_client;
-  if (!target || !target->Dispatch)
-    return NET_ERROR_INVALID_STATE;
-
-  NTSTATUS status;
-
+  // Строим MDL на буфер отправителя
   WSK_BUF wsk_buf;
-  
   wsk_buf.Mdl = IoAllocateMdl((PVOID)data, (ULONG)size, FALSE, FALSE, NULL);
   if (!wsk_buf.Mdl)
     return NET_ERROR_NO_MEMORY;
 
   MmBuildMdlForNonPagedPool(wsk_buf.Mdl);
-
   wsk_buf.Offset = 0;
   wsk_buf.Length = size;
 
@@ -415,10 +414,75 @@ net_error_t windows_net_socket_send(net_socket_t *sock, const void *data,
   KeInitializeEvent(&event, NotificationEvent, FALSE);
   IoSetCompletionRoutine(irp, wsk_completion, &event, TRUE, TRUE, TRUE);
 
-  status = ((PWSK_PROVIDER_CONNECTION_DISPATCH)target->Dispatch)
-               ->WskSend(target, &wsk_buf,
-                         0, // Flags — 0 для обычной отправки
-                         irp);
+  NTSTATUS status;
+
+  if (sock->protocol == NET_PROTO_TCP) {
+    // TCP: отправка в установленное соединение через active_client.
+    // active_client выставляется либо в accept (серверная сторона),
+    // либо в connect (клиентская сторона).
+    PWSK_SOCKET target = impl->active_client;
+    if (!target || !target->Dispatch) {
+      IoFreeIrp(irp);
+      IoFreeMdl(wsk_buf.Mdl);
+      return NET_ERROR_INVALID_STATE;
+    }
+
+    status = ((PWSK_PROVIDER_CONNECTION_DISPATCH)target->Dispatch)
+                 ->WskSend(target, &wsk_buf, 0, irp);
+  } else if (sock->protocol == NET_PROTO_UDP) {
+    // UDP: адрес получателя должен быть сохранён предварительно
+    // через net_socket_connect. Проверяем, что sock->addr установлен.
+    BOOLEAN no_dest = FALSE;
+    if (sock->addr.family == NET_AF_INET4) {
+      no_dest = (sock->addr.addr.ipv4 == 0 && sock->addr.port == 0);
+    } else if (sock->addr.family == NET_AF_INET6) {
+      BOOLEAN all_zero = TRUE;
+      for (int i = 0; i < 16; ++i) {
+        if (sock->addr.addr.ipv6[i] != 0) {
+          all_zero = FALSE;
+          break;
+        }
+      }
+      no_dest = (all_zero && sock->addr.port == 0);
+    } else {
+      no_dest = TRUE;
+    }
+
+    if (no_dest) {
+      IoFreeIrp(irp);
+      IoFreeMdl(wsk_buf.Mdl);
+      return NET_ERROR_INVALID_STATE;
+    }
+
+    // Готовим SOCKADDR назначения
+    SOCKADDR_STORAGE dest_storage;
+    RtlZeroMemory(&dest_storage, sizeof(dest_storage));
+    PSOCKADDR pDest = NULL;
+
+    if (sock->addr.family == NET_AF_INET4) {
+      PSOCKADDR_IN p4 = (PSOCKADDR_IN)&dest_storage;
+      p4->sin_family = AF_INET;
+      p4->sin_port = sock->addr.port;
+      p4->sin_addr.s_addr = sock->addr.addr.ipv4;
+      pDest = (PSOCKADDR)p4;
+    } else {
+      PSOCKADDR_IN6 p6 = (PSOCKADDR_IN6)&dest_storage;
+      p6->sin6_family = AF_INET6;
+      p6->sin6_port = sock->addr.port;
+      RtlCopyMemory(&p6->sin6_addr, sock->addr.addr.ipv6, 16);
+      p6->sin6_flowinfo = 0;
+      p6->sin6_scope_id = sock->addr.scope_id; // scope_id для link-local
+      pDest = (PSOCKADDR)p6;
+    }
+
+    status =
+        ((PWSK_PROVIDER_DATAGRAM_DISPATCH)impl->wsk_socket->Dispatch)
+            ->WskSendTo(impl->wsk_socket, &wsk_buf, 0, pDest, 0, NULL, irp);
+  } else {
+    IoFreeIrp(irp);
+    IoFreeMdl(wsk_buf.Mdl);
+    return NET_ERROR_INVALID_PROTOCOL;
+  }
 
   if (status == STATUS_PENDING) {
     KeWaitForSingleObject(&event, Executive, KernelMode, FALSE, NULL);
