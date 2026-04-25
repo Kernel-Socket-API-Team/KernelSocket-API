@@ -35,11 +35,8 @@ net_error_t linux_net_address_parse(const char* str, net_family_t ip_family, net
         const char* ip4_ptr = str;
         const char* port_ptr = strchr(str, ':');
 
-        size_t size = (size_t)(port_ptr - ip4_ptr);
-
         char ip4_buf[NET_IPV4_PORT_STR_MAX];
-        memcpy(ip4_buf, ip4_ptr, size);
-        ip4_buf[size] = '\0';
+        strncpy(ip4_buf, ip4_ptr, (size_t)(port_ptr - ip4_ptr + 1));
 
         ++port_ptr;
 
@@ -64,6 +61,7 @@ net_error_t linux_net_address_parse(const char* str, net_family_t ip_family, net
 
             char ip6_buf[NET_IPV6_PORT_STR_MAX];
             strncpy(ip6_buf, ip6_ptr, (size_t)(port_ptr - ip6_ptr + 1));
+
             port_ptr += 2;
 
             status = inet_pton_with_scope(&init_net, AF_INET6, ip6_buf, port_ptr, &sock_addr);
@@ -84,14 +82,7 @@ net_error_t linux_net_address_parse(const char* str, net_family_t ip_family, net
         }
     }
 
-    if (status != 0)
-    {
-        return NET_ERROR_INVALID_PARAM;
-    }
-    else
-    {
-        return NET_SUCCESS;
-    }
+    return convert_status_from_linux(status);
 }
 
 
