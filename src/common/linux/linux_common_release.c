@@ -88,16 +88,14 @@ net_error_t linux_net_address_parse(const char* str, net_family_t ip_family, net
 
 net_error_t linux_net_htons(uint16_t hostshort, uint16_t* netshort)
 {
-    hostshort = 0;
-    netshort = 0;
-    return 0;
+    *netshort = htons(hostshort);
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_ntohs(uint16_t netshort, uint16_t* hostshort)
 {
-    netshort = 0;
-    hostshort = 0;
-    return 0;
+    *hostshort = ntohs(netshort);
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_address_to_string(const net_address_t* addr, char* buffer, size_t buffer_size, bool include_port) {
