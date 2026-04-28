@@ -34,11 +34,19 @@ build-all: build-image
 clean-all:
 	rm -rf $(OUT_DIR)
 
-.PHONY: build-server
-build-server: build-image
+.PHONY: build-mtserver
+build-mtserver: build-image
 	docker run --rm \
 		-v $(WORKSPACE):/workspace \
-		-w /workspace/drivers/linux/drivers/serverTestDriver \
+		-w /workspace/drivers/linux/drivers/mtServerTestDriver \
+		$(IMAGE_NAME) \
+		make KERNEL_VERSION=$(KERNEL_VERSION) KDIR=/usr/src/linux-headers-$(KERNEL_VERSION)
+
+.PHONY: build-stserver
+build-stserver: build-image
+	docker run --rm \
+		-v $(WORKSPACE):/workspace \
+		-w /workspace/drivers/linux/drivers/stServerTestDriver \
 		$(IMAGE_NAME) \
 		make KERNEL_VERSION=$(KERNEL_VERSION) KDIR=/usr/src/linux-headers-$(KERNEL_VERSION)
 
@@ -69,7 +77,8 @@ help:
 	@echo "Доступные команды Makefile:"
 	@echo "  build-image      - сборка Docker-образа"
 	@echo "  run              - запуск интерактивного контейнера"
-	@echo "  build-server	  - запуск сборки serverTestDriver"
+	@echo "  build-mtserver	  - запуск сборки mtServerTestDriver"
+	@echo "  build-stserver   - запуск сборки stServerTestDriver"
 	@echo "  build-client     - запуск сборки clientTestDriver"
 	@echo "  build-all        - запуск сборки всего (DRIVERS)"
 	@echo "  clean-all        - запуск удаления .ko файлов из build"
