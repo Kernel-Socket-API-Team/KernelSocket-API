@@ -1,4 +1,4 @@
-// todo: распределение по потокам
+// todo: распределение по потокм
 
 #include "../../../../include/ksockapi.h"
 // второстпенное
@@ -106,7 +106,7 @@ static int __init minimal_driver_init(void)
     remote_addr.scope_id = 2;
 
     if (debug_family == NET_AF_INET4)
-        in4_pton("127.0.0.1", -1, (u8*)&remote_addr.addr.ipv4, -1, NULL);
+        in4_pton("192.168.203.1", -1, (u8*)&remote_addr.addr.ipv4, -1, NULL);
     else
         in6_pton("fe80::2889:bf2e:df6c:1e81", -1, (u8*)&remote_addr.addr.ipv6, -1, NULL);
     // TODO(end)
@@ -155,5 +155,5 @@ module_exit(minimal_driver_exit);
 // Обязательная информация о модуле
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Vyacheslav");
-MODULE_DESCRIPTION("Minimal Linux Kernel Module");
+MODULE_DESCRIPTION("Client Test Driver");
 MODULE_VERSION("1.0");

@@ -1,5 +1,3 @@
- // todo: распределение по потокам
-
 #include "../../../../include/ksockapi.h"
 // второстпенное
 #include <linux/inet.h>   // in4_pton
@@ -29,7 +27,7 @@ static int __init minimal_driver_init(void)
     }
 
     net_address_t local_addr; // локальный адрес
-    
+
     // parse {
     memset(&local_addr, 0, sizeof(local_addr));
     local_addr.family = NET_AF_INET4;
@@ -95,5 +93,5 @@ module_exit(minimal_driver_exit);
 // Обязательная информация о модуле
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Vyacheslav");
-MODULE_DESCRIPTION("Minimal Linux Kernel Module");
+MODULE_DESCRIPTION("Single Threading Server Test Driver");
 MODULE_VERSION("1.0");

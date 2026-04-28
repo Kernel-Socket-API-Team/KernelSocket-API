@@ -4,9 +4,9 @@ KDIR := /lib/modules/$(KERNEL_VERSION)/build
 PWD := $(shell pwd)
 OUT_DIR := ../../../../build/linux
 
-obj-m += serverTestDriver.o
+obj-m += mtServerTestDriver.o
 
-serverTestDriver-y := \
+mtServerTestDriver-y := \
     driver.o \
     ../../../../compileLibraryForLinux/ksockapi_sources.o
 
@@ -17,7 +17,7 @@ all:
 	$(MAKE) -C $(KDIR) M=$(PWD) modules
 
 	mkdir -p $(OUT_DIR)
-	cp $(PWD)/serverTestDriver.ko $(OUT_DIR)/
+	cp $(PWD)/mtServerTestDriver.ko $(OUT_DIR)/
 	$(MAKE) -C $(KDIR) M=$(PWD) clean
 
 clean:

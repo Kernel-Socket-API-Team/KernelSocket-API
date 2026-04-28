@@ -13,7 +13,7 @@ KDIR := /usr/src/linux-headers-$(KERNEL_VERSION)
 TMP := $(WORKSPACE)/.module_build
 
 # Список всех папок с драйверами (через пробел)
-DRIVERS = serverTestDriver clientTestDriver
+DRIVERS = mtServerTestDriver stServerTestDriver clientTestDriver
 
 DRIVERS_PATH = drivers/linux/drivers
 
