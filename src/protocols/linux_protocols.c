@@ -78,14 +78,7 @@ net_error_t linux_net_socket_close(net_socket_t* sock)
     if (!impl || !impl->kernel_socket)
         return NET_ERROR_INVALID_STATE;
 
-    // Закрываем клиентский сокет (если есть)
-    if (impl->active_client && impl->active_client != impl->kernel_socket)
-    {
-        sock_release(impl->active_client);
-        impl->active_client = NULL;
-    }
-
-    // Закрываем основной системный сокет
+    // Закрываем системный сокет
     if (impl->kernel_socket)
     {
         sock_release(impl->kernel_socket);
@@ -212,26 +205,8 @@ net_error_t linux_net_socket_send(net_socket_t* sock, const void* data, size_t s
         return NET_ERROR_INVALID_PARAM;
 
     PLINUX_SOCKET_IMPL impl = (PLINUX_SOCKET_IMPL)sock->context;
-    if (!impl)
+    if (!impl || !impl->kernel_socket)
         return NET_ERROR_INVALID_STATE;
-
-    // Выбираем правильный сокет
-    struct socket* target = NULL;
-
-    if (sock->type == NET_SOCK_TYPE_TCP_LISTEN)
-    {
-        // TCP сервер — шлём через active_client
-        if (!impl->active_client)
-            return NET_ERROR_INVALID_STATE;
-        target = impl->active_client;
-    }
-    else
-    {
-        // TCP клиент или UDP — шлём через основной сокет
-        if (!impl->kernel_socket)
-            return NET_ERROR_INVALID_STATE;
-        target = impl->kernel_socket;
-    }
 
     // Готовим данные для отправки
     struct kvec kv;
@@ -279,7 +254,7 @@ net_error_t linux_net_socket_send(net_socket_t* sock, const void* data, size_t s
     // TCP — msg_name не нужен, соединение уже установлено
 
     // Отправляем
-    int status = kernel_sendmsg(target, &msg, &kv, 1, size);
+    int status = kernel_sendmsg(impl->kernel_socket, &msg, &kv, 1, size);
     if (status < 0)
         return convert_status_from_linux(status);
 
@@ -335,24 +310,24 @@ net_error_t linux_net_socket_accept(net_socket_t* server, net_socket_t** client_
     memset(client_impl, 0, sizeof(LINUX_SOCKET_IMPL));
 
     // Хранение локального адреса клиента
-    struct sockaddr_storage remote_addr;
-    memset(&remote_addr, 0, sizeof(struct sockaddr_storage));
+    struct sockaddr_storage local_addr;
+    memset(&local_addr, 0, sizeof(struct sockaddr_storage));
 
     // Получаем локальный адрес клиента
-    status = kernel_getpeername(new_socket, (struct sockaddr*)&remote_addr);
+    status = kernel_getpeername(new_socket, (struct sockaddr*)&local_addr);
     if (status >= 0)
     {
-        if (remote_addr.ss_family == AF_INET)
+        if (local_addr.ss_family == AF_INET)
         {
-            struct sockaddr_in* ip4_addr = (struct sockaddr_in*)&remote_addr;
+            struct sockaddr_in* ip4_addr = (struct sockaddr_in*)&local_addr;
             client->addr.family = NET_AF_INET4;
             client->addr.port = ip4_addr->sin_port;
             client->addr.addr.ipv4 = ip4_addr->sin_addr.s_addr;
             client->addr.scope_id = 0;
         }
-        else if (remote_addr.ss_family == AF_INET6)
+        else if (local_addr.ss_family == AF_INET6)
         {
-            struct sockaddr_in6* ip6_addr = (struct sockaddr_in6*)&remote_addr;
+            struct sockaddr_in6* ip6_addr = (struct sockaddr_in6*)&local_addr;
             client->addr.family = NET_AF_INET6;
             client->addr.port = ip6_addr->sin6_port;
             memcpy(client->addr.addr.ipv6, ip6_addr->sin6_addr.in6_u.u6_addr8, 16);
@@ -360,7 +335,7 @@ net_error_t linux_net_socket_accept(net_socket_t* server, net_socket_t** client_
         }
     }
 
-    client_impl->active_client = new_socket;
+    client_impl->kernel_socket = new_socket;
 
     client->protocol = NET_PROTO_TCP;
     client->type = NET_SOCK_TYPE_TCP_CONNECTION;
@@ -394,10 +369,10 @@ net_error_t linux_net_socket_receive(net_socket_t* sock, void* buffer, size_t bu
     // TCP
     if (sock->protocol == NET_PROTO_TCP)
     {
-        if (!impl->active_client)
+        if (!impl->kernel_socket)
             return NET_ERROR_INVALID_STATE;
 
-        status = kernel_recvmsg(impl->active_client, &msg, &kv, 1 /* Size of input s/g array */, buffer_size, 0);
+        status = kernel_recvmsg(impl->kernel_socket, &msg, &kv, 1 /* Size of input s/g array */, buffer_size, 0);
         if (status < 0)
             return convert_status_from_linux(status);
     }

@@ -32,7 +32,6 @@ net_error_t convert_status_from_linux(int error);
 typedef struct LINUX_SOCKET_IMPL
 {
     struct socket* kernel_socket; // kernel socket
-    struct socket* active_client; // Для TCP клиента
 } LINUX_SOCKET_IMPL, *PLINUX_SOCKET_IMPL;
 
 #endif

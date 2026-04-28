@@ -43,7 +43,7 @@ build-server: build-image
 		make KERNEL_VERSION=$(KERNEL_VERSION) KDIR=/usr/src/linux-headers-$(KERNEL_VERSION)
 
 .PHONY: build-client
-build-server: build-image
+build-client: build-image
 	docker run --rm \
 		-v $(WORKSPACE):/workspace \
 		-w /workspace/drivers/linux/drivers/clientTestDriver \
