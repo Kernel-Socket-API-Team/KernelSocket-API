@@ -1,5 +1,3 @@
-// todo: распределение по потокм
-
 #include "../../../../include/ksockapi.h"
 // второстпенное
 #include <linux/inet.h>   // in4_pton

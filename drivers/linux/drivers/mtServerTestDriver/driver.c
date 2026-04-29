@@ -81,6 +81,7 @@ static int server_thread_proc(void* data)
             {
                 printk(KERN_ERR "[driver] Accept failed: %d\n", status);
                 net_socket_close(config->server_socket);
+                config->server_socket = NULL;
                 return -1;
             }
             printk(KERN_INFO "[driver] Server accepted client\n");
