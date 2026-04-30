@@ -15,11 +15,12 @@ extern "C"
 #endif
 
 #ifdef _WIN32
-#include <ip2string.h>
-#include <netioapi.h>
+
 #include <ntddk.h>
 #include <ntstrsafe.h>
 #include <wdm.h>
+#include <ip2string.h>
+#include <netioapi.h>
 #include <ws2ipdef.h>
 #include <wsk.h>
 
