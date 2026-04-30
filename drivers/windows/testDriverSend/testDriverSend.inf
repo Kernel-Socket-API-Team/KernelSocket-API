@@ -1,5 +1,5 @@
 ;
-; Test_Tcp_Connect_Driver.inf
+; testDriverSend.inf
 ;
 
 [Version]
@@ -7,7 +7,7 @@ Signature   = "$WINDOWS NT$"
 Class       = System ; TODO: specify appropriate Class
 ClassGuid   = {4d36e97d-e325-11ce-bfc1-08002be10318} ; TODO: specify appropriate ClassGuid
 Provider    = %ManufacturerName%
-CatalogFile = Test_Tcp_Connect_Driver.cat
+CatalogFile = testDriverSend.cat
 DriverVer   = ; TODO: set DriverVer in stampinf property pages
 PnpLockdown = 1
 
@@ -18,7 +18,7 @@ DefaultDestDir = 13
 1 = %DiskName%,,,""
 
 [SourceDisksFiles]
-Test_Tcp_Connect_Driver.sys = 1,,
+testDriverSend.sys = 1,,
 
 ;*****************************************
 ; Install Section
@@ -28,35 +28,35 @@ Test_Tcp_Connect_Driver.sys = 1,,
 %ManufacturerName% = Standard,NT$ARCH$.10.0...16299 ; %13% support introduced in build 16299
 
 [Standard.NT$ARCH$.10.0...16299]
-%Test_Tcp_Connect_Driver.DeviceDesc% = Test_Tcp_Connect_Driver_Device, Root\Test_Tcp_Connect_Driver ; TODO: edit hw-id
+%testDriverSend.DeviceDesc% = testDriverSend_Device, Root\testDriverSend ; TODO: edit hw-id
 
-[Test_Tcp_Connect_Driver_Device.NT]
+[testDriverSend_Device.NT]
 CopyFiles = File_Copy
 
 [File_Copy]
-Test_Tcp_Connect_Driver.sys
+testDriverSend.sys
 
 ;-------------- Service installation
-[Test_Tcp_Connect_Driver_Device.NT.Services]
-AddService = Test_Tcp_Connect_Driver,%SPSVCINST_ASSOCSERVICE%, Test_Tcp_Connect_Driver_Service_Inst
+[testDriverSend_Device.NT.Services]
+AddService = testDriverSend,%SPSVCINST_ASSOCSERVICE%, testDriverSend_Service_Inst
 
-; -------------- Test_Tcp_Connect_Driver driver install sections
-[Test_Tcp_Connect_Driver_Service_Inst]
-DisplayName    = %Test_Tcp_Connect_Driver.SVCDESC%
+; -------------- testDriverSend driver install sections
+[testDriverSend_Service_Inst]
+DisplayName    = %testDriverSend.SVCDESC%
 ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
 StartType      = 3               ; SERVICE_DEMAND_START
 ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
-ServiceBinary  = %13%\Test_Tcp_Connect_Driver.sys
+ServiceBinary  = %13%\testDriverSend.sys
 
-[Test_Tcp_Connect_Driver_Device.NT.Wdf]
-KmdfService = Test_Tcp_Connect_Driver, Test_Tcp_Connect_Driver_wdfsect
+[testDriverSend_Device.NT.Wdf]
+KmdfService = testDriverSend, testDriverSend_wdfsect
 
-[Test_Tcp_Connect_Driver_wdfsect]
+[testDriverSend_wdfsect]
 KmdfLibraryVersion = $KMDFVERSION$
 
 [Strings]
 SPSVCINST_ASSOCSERVICE = 0x00000002
 ManufacturerName = "<Your manufacturer name>" ;TODO: Replace with your manufacturer name
-DiskName = "Test_Tcp_Connect_Driver Installation Disk"
-Test_Tcp_Connect_Driver.DeviceDesc = "Test_Tcp_Connect_Driver Device"
-Test_Tcp_Connect_Driver.SVCDESC = "Test_Tcp_Connect_Driver Service"
+DiskName = "testDriverSend Installation Disk"
+testDriverSend.DeviceDesc = "testDriverSend Device"
+testDriverSend.SVCDESC = "testDriverSend Service"

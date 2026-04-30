@@ -269,23 +269,6 @@ net_error_t windows_net_socket_bind(net_socket_t* sock, const net_address_t* add
     return convert_status_from_windows(status, sock);
 }
 
-<<<<<<< HEAD
-net_error_t windows_net_socket_connect(net_socket_t* sock, const net_address_t* addr)
-{
-    sock = 0;
-    addr = 0;
-    return 0;
-}
-
-net_error_t windows_net_socket_send(net_socket_t* sock, const void* data, size_t size, size_t* sent)
-{
-    sock = 0;
-    data = 0;
-    size = 0;
-    sent = 0;
-    return 0;
-=======
-// Данная функция требует тестов!!!!
 net_error_t windows_net_socket_connect(net_socket_t *sock,
                                        const net_address_t *addr) {
   if (!sock || !addr)
@@ -301,19 +284,6 @@ net_error_t windows_net_socket_connect(net_socket_t *sock,
   PWINDOWS_SOCKET_IMPL impl = (PWINDOWS_SOCKET_IMPL)sock->context;
   if (!impl || !impl->wsk_socket)
     return NET_ERROR_INVALID_STATE;
-
-  if (!impl->wsk_socket->Dispatch)
-    return NET_ERROR_INVALID_VTABLE;
-
-  // --- UDP: реального соединения нет, просто сохраняем адрес получателя ---
-  if (sock->protocol == NET_PROTO_UDP) {
-    sock->addr = *addr;
-    return NET_SUCCESS;
-  }
-
-  // --- TCP: реальный three-way handshake ---
-  if (sock->type != NET_SOCK_TYPE_TCP_CONNECTION)
-    return NET_ERROR_INVALID_PROTOCOL;
 
   NTSTATUS status;
 
@@ -340,7 +310,6 @@ net_error_t windows_net_socket_connect(net_socket_t *sock,
     RtlZeroMemory(&any_addr, sizeof(any_addr));
     any_addr.family = sock->addr.family;
     any_addr.port = 0;
-    // scope_id = 0 для ANY-адреса — это корректно
 
     net_error_t be = windows_net_socket_bind(sock, &any_addr);
     if (be != NET_SUCCESS)
@@ -364,10 +333,16 @@ net_error_t windows_net_socket_connect(net_socket_t *sock,
     p6->sin6_port = addr->port;
     RtlCopyMemory(&p6->sin6_addr, addr->addr.ipv6, 16);
     p6->sin6_flowinfo = 0;
-    p6->sin6_scope_id = addr->scope_id; // scope_id для link-local IPv6
+    p6->sin6_scope_id = addr->scope_id;
     pRemote = (PSOCKADDR)p6;
   } else {
     return NET_ERROR_INVALID_PARAM;
+  }
+
+  // Cохраняем адрес получателя для UDP
+  if (sock->protocol == NET_PROTO_UDP) {
+    sock->remote_addr = *addr;
+    return convert_status_from_windows(STATUS_SUCCESS, sock);
   }
 
   PIRP irp = IoAllocateIrp(1, FALSE);
@@ -389,19 +364,14 @@ net_error_t windows_net_socket_connect(net_socket_t *sock,
   IoFreeIrp(irp);
 
   if (!NT_SUCCESS(status))
-    return convert_status_from_windows(status);
-
-  // После успешного TCP connect этот сокет сам становится "активным"
-  // для последующих send/receive — делаем поведение симметричным с accept
-  impl->active_client = impl->wsk_socket;
+    return convert_status_from_windows(status, sock);
 
   // Сохраняем адрес пира
-  sock->addr = *addr;
+  sock->remote_addr = *addr;
 
-  return NET_SUCCESS;
+  return convert_status_from_windows(status, sock);
 }
 
-// Данная функция требует тестов!!!!
 net_error_t windows_net_socket_send(net_socket_t *sock, const void *data,
                                     size_t size, size_t *sent) {
   if (!sock || !data || size == 0)
@@ -434,33 +404,23 @@ net_error_t windows_net_socket_send(net_socket_t *sock, const void *data,
   NTSTATUS status;
 
   if (sock->protocol == NET_PROTO_TCP) {
-    // TCP: отправка в установленное соединение через active_client.
-    // active_client выставляется либо в accept (серверная сторона),
-    // либо в connect (клиентская сторона).
-    PWSK_SOCKET target = impl->active_client;
-    if (!target || !target->Dispatch) {
-      IoFreeIrp(irp);
-      IoFreeMdl(wsk_buf.Mdl);
-      return NET_ERROR_INVALID_STATE;
-    }
-
-    status = ((PWSK_PROVIDER_CONNECTION_DISPATCH)target->Dispatch)
-                 ->WskSend(target, &wsk_buf, 0, irp);
+    // TCP: отправка в установленное соединение
+    status = ((PWSK_PROVIDER_CONNECTION_DISPATCH)impl->wsk_socket->Dispatch)
+                 ->WskSend(impl->wsk_socket, &wsk_buf, 0, irp);
   } else if (sock->protocol == NET_PROTO_UDP) {
-    // UDP: адрес получателя должен быть сохранён предварительно
-    // через net_socket_connect. Проверяем, что sock->addr установлен.
+    // UDP: адрес получателя должен быть сохранён через connect
     BOOLEAN no_dest = FALSE;
-    if (sock->addr.family == NET_AF_INET4) {
-      no_dest = (sock->addr.addr.ipv4 == 0 && sock->addr.port == 0);
-    } else if (sock->addr.family == NET_AF_INET6) {
+    if (sock->remote_addr.family == NET_AF_INET4) {
+      no_dest = (sock->remote_addr.addr.ipv4 == 0 && sock->remote_addr.port == 0);
+    } else if (sock->remote_addr.family == NET_AF_INET6) {
       BOOLEAN all_zero = TRUE;
       for (int i = 0; i < 16; ++i) {
-        if (sock->addr.addr.ipv6[i] != 0) {
+        if (sock->remote_addr.addr.ipv6[i] != 0) {
           all_zero = FALSE;
           break;
         }
       }
-      no_dest = (all_zero && sock->addr.port == 0);
+      no_dest = (all_zero && sock->remote_addr.port == 0);
     } else {
       no_dest = TRUE;
     }
@@ -476,25 +436,27 @@ net_error_t windows_net_socket_send(net_socket_t *sock, const void *data,
     RtlZeroMemory(&dest_storage, sizeof(dest_storage));
     PSOCKADDR pDest = NULL;
 
-    if (sock->addr.family == NET_AF_INET4) {
+    if (sock->remote_addr.family == NET_AF_INET4) {
       PSOCKADDR_IN p4 = (PSOCKADDR_IN)&dest_storage;
       p4->sin_family = AF_INET;
-      p4->sin_port = sock->addr.port;
-      p4->sin_addr.s_addr = sock->addr.addr.ipv4;
+      p4->sin_port = sock->remote_addr.port;
+      p4->sin_addr.s_addr = sock->remote_addr.addr.ipv4;
       pDest = (PSOCKADDR)p4;
     } else {
       PSOCKADDR_IN6 p6 = (PSOCKADDR_IN6)&dest_storage;
       p6->sin6_family = AF_INET6;
-      p6->sin6_port = sock->addr.port;
-      RtlCopyMemory(&p6->sin6_addr, sock->addr.addr.ipv6, 16);
+      p6->sin6_port = sock->remote_addr.port;
+      RtlCopyMemory(&p6->sin6_addr, sock->remote_addr.addr.ipv6, 16);
       p6->sin6_flowinfo = 0;
-      p6->sin6_scope_id = sock->addr.scope_id; // scope_id для link-local
+      p6->sin6_scope_id = sock->remote_addr.scope_id;
       pDest = (PSOCKADDR)p6;
     }
 
     status =
         ((PWSK_PROVIDER_DATAGRAM_DISPATCH)impl->wsk_socket->Dispatch)
             ->WskSendTo(impl->wsk_socket, &wsk_buf, 0, pDest, 0, NULL, irp);
+
+    DbgPrint("[API] WskSendTo returned: 0x%08X\n", status);
   } else {
     IoFreeIrp(irp);
     IoFreeMdl(wsk_buf.Mdl);
@@ -512,13 +474,12 @@ net_error_t windows_net_socket_send(net_socket_t *sock, const void *data,
   IoFreeMdl(wsk_buf.Mdl);
 
   if (!NT_SUCCESS(status))
-    return convert_status_from_windows(status);
+    return convert_status_from_windows(status, sock);
 
   if (sent)
     *sent = bytes_sent;
 
-  return NET_SUCCESS;
->>>>>>> ce5772f6e2b0d3bb82b7c7bf288510aa7fba464f
+  return convert_status_from_windows(status, sock);
 }
 
 net_error_t windows_net_socket_accept(net_socket_t* server, net_socket_t** client_out)

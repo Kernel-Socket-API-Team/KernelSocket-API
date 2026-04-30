@@ -1,9 +1,0 @@
-<Solution>
-  <Configurations>
-    <Platform Name="ARM64" />
-    <Platform Name="x64" />
-  </Configurations>
-  <Project Path="Test_Tcp_Connect_Driver/Test_Tcp_Connect_Driver.vcxproj">
-    <Deploy />
-  </Project>
-</Solution>

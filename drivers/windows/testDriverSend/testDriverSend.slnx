@@ -3,7 +3,7 @@
     <Platform Name="ARM64" />
     <Platform Name="x64" />
   </Configurations>
-  <Project Path="igorifooopii/igorifooopii.vcxproj">
+  <Project Path="testDriverSend.vcxproj">
     <Deploy Solution="*|ARM64" />
     <Deploy Solution="Release|x64" />
   </Project>
