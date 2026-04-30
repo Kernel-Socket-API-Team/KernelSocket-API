@@ -78,14 +78,7 @@ net_error_t linux_net_socket_close(net_socket_t* sock)
     if (!impl || !impl->kernel_socket)
         return NET_ERROR_INVALID_STATE;
 
-    // Закрываем клиентский сокет (если есть)
-    if (impl->active_client && impl->active_client != impl->kernel_socket)
-    {
-        sock_release(impl->active_client);
-        impl->active_client = NULL;
-    }
-
-    // Закрываем основной системный сокет
+    // Закрываем системный сокет
     if (impl->kernel_socket)
     {
         sock_release(impl->kernel_socket);
@@ -212,26 +205,8 @@ net_error_t linux_net_socket_send(net_socket_t* sock, const void* data, size_t s
         return NET_ERROR_INVALID_PARAM;
 
     PLINUX_SOCKET_IMPL impl = (PLINUX_SOCKET_IMPL)sock->context;
-    if (!impl)
+    if (!impl || !impl->kernel_socket)
         return NET_ERROR_INVALID_STATE;
-
-    // Выбираем правильный сокет
-    struct socket* target = NULL;
-
-    if (sock->type == NET_SOCK_TYPE_TCP_LISTEN)
-    {
-        // TCP сервер — шлём через active_client
-        if (!impl->active_client)
-            return NET_ERROR_INVALID_STATE;
-        target = impl->active_client;
-    }
-    else
-    {
-        // TCP клиент или UDP — шлём через основной сокет
-        if (!impl->kernel_socket)
-            return NET_ERROR_INVALID_STATE;
-        target = impl->kernel_socket;
-    }
 
     // Готовим данные для отправки
     struct kvec kv;
@@ -279,7 +254,7 @@ net_error_t linux_net_socket_send(net_socket_t* sock, const void* data, size_t s
     // TCP — msg_name не нужен, соединение уже установлено
 
     // Отправляем
-    int status = kernel_sendmsg(target, &msg, &kv, 1, size);
+    int status = kernel_sendmsg(impl->kernel_socket, &msg, &kv, 1, size);
     if (status < 0)
         return convert_status_from_linux(status);
 
@@ -292,20 +267,164 @@ net_error_t linux_net_socket_send(net_socket_t* sock, const void* data, size_t s
 
 net_error_t linux_net_socket_accept(net_socket_t* server, net_socket_t** client_out)
 {
-    server = 0;
-    client_out = 0;
-    return 0;
+    if (!server || !client_out)
+        return NET_ERROR_INVALID_PARAM;
+
+    if (server->type != NET_SOCK_TYPE_TCP_LISTEN)
+        return NET_ERROR_INVALID_PROTOCOL;
+
+    PLINUX_SOCKET_IMPL impl = (PLINUX_SOCKET_IMPL)server->context;
+    if (!impl || !impl->kernel_socket)
+        return NET_ERROR_INVALID_STATE;
+
+    int status;
+
+    // Прослушиваем сокет
+    status = kernel_listen(impl->kernel_socket, 1); // 1 клиент
+    if (status < 0)
+        return convert_status_from_linux(status);
+
+    // Принимаем входящий запрос в блокирующем режиме
+    struct socket* new_socket = NULL;
+    status = kernel_accept(impl->kernel_socket, &new_socket, 0);
+    if (status < 0)
+        return convert_status_from_linux(status);
+
+    // Выделяем память под клиентский сокет
+    net_socket_t* client = (net_socket_t*)kmalloc(sizeof(net_socket_t), GFP_KERNEL);
+    if (!client)
+    {
+        sock_release(new_socket);
+        return NET_ERROR_NO_MEMORY;
+    }
+    memset(client, 0, sizeof(net_socket_t));
+
+    // Выделяем память под клиентский контекст
+    PLINUX_SOCKET_IMPL client_impl = (PLINUX_SOCKET_IMPL)kmalloc(sizeof(LINUX_SOCKET_IMPL), GFP_KERNEL);
+    if (!client_impl)
+    {
+        sock_release(new_socket);
+        kfree(client);
+        return NET_ERROR_NO_MEMORY;
+    }
+    memset(client_impl, 0, sizeof(LINUX_SOCKET_IMPL));
+
+    // Хранение локального адреса клиента
+    struct sockaddr_storage local_addr;
+    memset(&local_addr, 0, sizeof(struct sockaddr_storage));
+
+    // Получаем локальный адрес клиента
+    status = kernel_getpeername(new_socket, (struct sockaddr*)&local_addr);
+    if (status >= 0)
+    {
+        if (local_addr.ss_family == AF_INET)
+        {
+            struct sockaddr_in* ip4_addr = (struct sockaddr_in*)&local_addr;
+            client->addr.family = NET_AF_INET4;
+            client->addr.port = ip4_addr->sin_port;
+            client->addr.addr.ipv4 = ip4_addr->sin_addr.s_addr;
+            client->addr.scope_id = 0;
+        }
+        else if (local_addr.ss_family == AF_INET6)
+        {
+            struct sockaddr_in6* ip6_addr = (struct sockaddr_in6*)&local_addr;
+            client->addr.family = NET_AF_INET6;
+            client->addr.port = ip6_addr->sin6_port;
+            memcpy(client->addr.addr.ipv6, ip6_addr->sin6_addr.in6_u.u6_addr8, 16);
+            client->addr.scope_id = ip6_addr->sin6_scope_id;
+        }
+    }
+
+    client_impl->kernel_socket = new_socket;
+
+    client->protocol = NET_PROTO_TCP;
+    client->type = NET_SOCK_TYPE_TCP_CONNECTION;
+    client->context = client_impl;
+
+    *client_out = client;
+
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_size, net_address_t* from_addr,
                                      size_t* received)
 {
-    sock = 0;
-    buffer = 0;
-    buffer_size = 0;
-    from_addr = 0;
-    received = 0;
-    return 0;
+    if (!sock || !buffer || buffer_size == 0)
+        return NET_ERROR_INVALID_PARAM;
+
+    PLINUX_SOCKET_IMPL impl = (PLINUX_SOCKET_IMPL)sock->context;
+    if (!impl)
+        return NET_ERROR_INVALID_STATE;
+
+    // Буфер для приёма данных
+    struct kvec kv;
+    kv.iov_base = buffer;
+    kv.iov_len = buffer_size;
+
+    struct msghdr msg;
+    memset(&msg, 0, sizeof(msg));
+
+    int status;
+
+    // TCP
+    if (sock->protocol == NET_PROTO_TCP)
+    {
+        if (!impl->kernel_socket)
+            return NET_ERROR_INVALID_STATE;
+
+        status = kernel_recvmsg(impl->kernel_socket, &msg, &kv, 1 /* Size of input s/g array */, buffer_size, 0);
+        if (status < 0)
+            return convert_status_from_linux(status);
+    }
+    // UDP
+    else
+    {
+        if (!impl->kernel_socket)
+            return NET_ERROR_INVALID_STATE;
+
+        // Для UDP требуется записать адрес отправителя
+        struct sockaddr_in addr4;
+        struct sockaddr_in6 addr6;
+
+        if (sock->addr.family == NET_AF_INET4)
+        {
+            memset(&addr4, 0, sizeof(addr4));
+            msg.msg_name = &addr4;
+            msg.msg_namelen = sizeof(addr4);
+        }
+        else
+        {
+            memset(&addr6, 0, sizeof(addr6));
+            msg.msg_name = &addr6;
+            msg.msg_namelen = sizeof(addr6);
+        }
+
+        status = kernel_recvmsg(impl->kernel_socket, &msg, &kv, 1 /* Size of input s/g array */, buffer_size, 0);
+        if (status < 0)
+            return convert_status_from_linux(status);
+
+        if (from_addr)
+        {
+            if (sock->addr.family == NET_AF_INET4)
+            {
+                from_addr->family = NET_AF_INET4;
+                from_addr->port = addr4.sin_port;
+                from_addr->addr.ipv4 = addr4.sin_addr.s_addr;
+            }
+            else
+            {
+                from_addr->family = NET_AF_INET6;
+                from_addr->port = addr6.sin6_port;
+                from_addr->scope_id = addr6.sin6_scope_id;
+                memcpy(from_addr->addr.ipv6, &addr6.sin6_addr, 16);
+            }
+        }
+    }
+
+    if (received)
+        *received = (size_t)status;
+
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_get_address(net_socket_t* sock, net_address_t* addr)
