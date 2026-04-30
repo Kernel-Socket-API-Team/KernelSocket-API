@@ -147,31 +147,10 @@ net_error_t windows_net_socket_close(net_socket_t* sock)
     if (!impl || !impl->wsk_socket)
         return NET_ERROR_INVALID_STATE;
 
-    // Сохраняем указатель на wsk_socket перед очисткой
+    // Сохраняем указатель на wsk_socket
     PWSK_SOCKET wsk = impl->wsk_socket;
-    PWSK_SOCKET active = impl->active_client;
 
-    // Закрываем клиентский сокет (если есть)
-    if (active && active != wsk)
-    {
-        PIRP irp = IoAllocateIrp(1, FALSE);
-        if (irp)
-        {
-            KEVENT event;
-            KeInitializeEvent(&event, NotificationEvent, FALSE);
-            IoSetCompletionRoutine(irp, wsk_completion, &event, TRUE, TRUE, TRUE);
-
-            ((PWSK_PROVIDER_BASIC_DISPATCH)active->Dispatch)->WskCloseSocket(active, irp);
-
-            if (irp->IoStatus.Status == STATUS_PENDING)
-            {
-                KeWaitForSingleObject(&event, Executive, KernelMode, FALSE, NULL);
-            }
-            IoFreeIrp(irp);
-        }
-    }
-
-    // Закрываем серверный сокет - прерывает все блокирующие функции сокета
+    // Закрываем сокет
     if (wsk)
     {
         PIRP irp = IoAllocateIrp(1, FALSE);
@@ -432,8 +411,8 @@ net_error_t windows_net_socket_accept(net_socket_t* server, net_socket_t** clien
     }
 
     RtlZeroMemory(client_impl, sizeof(WINDOWS_SOCKET_IMPL));
-    client_impl->active_client = newClient;
     client_impl->wsk_socket = newClient;
+    KeInitializeEvent(&client_impl->completion_event, NotificationEvent, FALSE);
 
     client->context = client_impl;
     client->protocol = NET_PROTO_TCP;
@@ -484,15 +463,15 @@ net_error_t windows_net_socket_receive(net_socket_t* sock, void* buffer, size_t 
     if (sock->protocol == NET_PROTO_TCP)
     {
 
-        if (!impl->active_client)
+        if (!impl->wsk_socket)
         {
             IoFreeMdl(wsk_buf.Mdl);
             IoFreeIrp(irp);
             return NET_ERROR_INVALID_STATE;
         }
 
-        status = ((PWSK_PROVIDER_CONNECTION_DISPATCH)impl->active_client->Dispatch)
-                     ->WskReceive(impl->active_client, &wsk_buf, 0, irp);
+        status = ((PWSK_PROVIDER_CONNECTION_DISPATCH)impl->wsk_socket->Dispatch)
+                     ->WskReceive(impl->wsk_socket, &wsk_buf, 0, irp);
 
         if (from_addr)
             *from_addr = sock->addr; // копируем сохраненный адрес
