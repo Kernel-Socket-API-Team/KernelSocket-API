@@ -11,21 +11,6 @@ const net_vtable_dispatcher* vtable =
     &linux_vtable;
 #endif
 
-// Реализация сокета (скрыта от пользователя)
-struct net_socket
-{
-    net_protocol_t protocol;   // Тип транспортного протокола (TCP/UDP)
-    net_address_t addr;        // Настройки локального адреса сокета
-    net_address_t remote_addr; // Настройки удалённого адреса сокета
-
-    net_error_t error; // Храним последнюю ошибку, которая возникла при работе с сокетом
-    void* last_error; // Храним указатель на последнюю ошибку в контексте конкретной ОС (NTSTATUS ...)
-
-    net_socket_type_t type; // Тип сокета
-
-    void* context; // Платформозависимый контекст
-};
-
 // Безопастная маршрутизация интерфейса на платформенное определение
 net_error_t net_register(void)
 {
@@ -155,6 +140,14 @@ net_error_t net_socket_get_address(net_socket_t* sock, net_address_t* addr)
         return NET_ERROR_INVALID_VTABLE;
     else
         return vtable->bind_net_socket_get_address(sock, addr);
+}
+
+net_error_t net_socket_get_remote_address(net_socket_t* sock, net_address_t* addr)
+{
+    if (!vtable || !vtable->bind_net_socket_get_remote_address)
+        return NET_ERROR_INVALID_VTABLE;
+    else
+        return vtable->bind_net_socket_get_remote_address(sock, addr);
 }
 
 net_error_t net_socket_get_type(net_socket_t* sock, net_socket_type_t* type)
