@@ -8,28 +8,50 @@ WSK_CLIENT_DISPATCH WskAppDispatch = {
     NULL                    // ClientCallback (не используется)
 };
 
-net_error_t convert_status_from_windows(NTSTATUS ntstatus)
+net_error_t convert_status_from_windows(NTSTATUS ntstatus, net_socket_t* sock)
 {
     if (NT_SUCCESS(ntstatus))
     {
+        if (sock)
+        {
+            sock->error = NET_SUCCESS;
+            sock->last_error = (void*)ntstatus;
+        }
         return NET_SUCCESS;
     }
+
+     net_error_t error;
 
     switch (ntstatus)
     {
     case STATUS_NO_MEMORY:
-        return NET_ERROR_NO_MEMORY;
+        error = NET_ERROR_NO_MEMORY;
+        break;
     case STATUS_ACCESS_DENIED:
-        return NET_ERROR_ACCESS_DENIED;
+        error = NET_ERROR_ACCESS_DENIED;
+        break;
     case STATUS_TIMEOUT:
-        return NET_ERROR_TIMEOUT;
+        error = NET_ERROR_TIMEOUT;
+        break;
     case STATUS_BUFFER_TOO_SMALL:
-        return NET_ERROR_BUFFER_TOO_SMALL;
+        error = NET_ERROR_BUFFER_TOO_SMALL;
+        break;
     case STATUS_INVALID_PARAMETER:
-        return NET_ERROR_INVALID_PARAM;
+    case STATUS_INVALID_HANDLE:
+        error = NET_ERROR_INVALID_PARAM;
+        break;
     default:
-        return NET_ERROR_GENERIC;
+        error = NET_ERROR_GENERIC;
+        break;
     }
+
+    if (sock)
+    {
+        sock->error = error;
+        sock->last_error = (void*)ntstatus;
+    }
+
+    return error;
 }
 
 static NTSTATUS get_ifindex_by_name(const char* ifname, PULONG numeric_scope)

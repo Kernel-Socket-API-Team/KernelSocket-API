@@ -17,7 +17,7 @@ extern WSK_CONTEXT g_WskContext;
 extern WSK_CLIENT_DISPATCH WskAppDispatch;
 
 // Конвертация ошибок
-net_error_t convert_status_from_windows(NTSTATUS ntstatus);
+net_error_t convert_status_from_windows(NTSTATUS ntstatus, net_socket_t* sock);
 
 /**
  * Преобразует IPv6 строку с именем интерфейса в строку с числовым scope_id

@@ -18,6 +18,7 @@ const net_vtable_dispatcher linux_vtable = {
     .bind_net_ntohs = linux_net_ntohs,
     .bind_net_address_to_string = linux_net_address_to_string,
     .bind_net_socket_get_address = linux_net_socket_get_address,
+    .bind_net_socket_get_remote_address = linux_net_socket_get_remote_address,
     .bind_net_socket_get_type = linux_net_socket_get_type,
     .bind_net_socket_get_protocol = linux_net_socket_get_protocol,
     .bind_net_socket_last_error = linux_net_socket_last_error,
