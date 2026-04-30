@@ -18,6 +18,7 @@ const net_vtable_dispatcher windows_vtable = {
     .bind_net_ntohs = windows_net_ntohs,
     .bind_net_address_to_string = windows_net_address_to_string,
     .bind_net_socket_get_address = windows_net_socket_get_address,
+    .bind_net_socket_get_remote_address = windows_net_socket_get_remote_address,
     .bind_net_socket_get_type = windows_net_socket_get_type,
     .bind_net_socket_get_protocol = windows_net_socket_get_protocol,
     .bind_net_socket_last_error = windows_net_socket_last_error,

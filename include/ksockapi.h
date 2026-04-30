@@ -409,6 +409,18 @@ extern "C"
     net_error_t net_socket_get_address(net_socket_t* sock, net_address_t* addr);
 
     /*
+    * Получение удалённого адреса сокета
+    *
+    * @param[in] sock   - сокет
+    * @param[out] addr  - структура для удалённого адреса
+    *
+    * @return NET_SUCCESS                       - адрес получен
+    * @return NET_ERROR_INVALID_PARAM           - некорректные параметры
+    * @return NET_ERROR_ADDRESS_NOT_AVAILABLE   - удалённый адрес недоступен (UDP или не подключён)
+    */
+    net_error_t net_socket_get_remote_address(net_socket_t* sock, net_address_t* addr);
+
+    /*
      * Получение типа сокета
      *
      * @param[in] sock  - сокет

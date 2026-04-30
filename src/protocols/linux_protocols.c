@@ -315,6 +315,13 @@ net_error_t linux_net_socket_get_address(net_socket_t* sock, net_address_t* addr
     return 0;
 }
 
+net_error_t linux_net_socket_get_remote_address(net_socket_t* sock, net_address_t* addr)
+{
+    sock = 0;
+    addr = 0;
+    return 0;
+}
+
 net_error_t linux_net_socket_get_type(net_socket_t* sock, net_socket_type_t* type)
 {
     sock = 0;
