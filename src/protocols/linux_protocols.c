@@ -310,42 +310,54 @@ net_error_t linux_net_socket_receive(net_socket_t* sock, void* buffer, size_t bu
 
 net_error_t linux_net_socket_get_address(net_socket_t* sock, net_address_t* addr)
 {
-    sock = 0;
-    addr = 0;
-    return 0;
+    if (!sock || !addr)
+        return NET_ERROR_INVALID_PARAM;
+
+    *addr = sock->addr;
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_get_remote_address(net_socket_t* sock, net_address_t* addr)
 {
-    sock = 0;
-    addr = 0;
-    return 0;
+    if (!sock || !addr)
+        return NET_ERROR_INVALID_PARAM;
+
+    *addr = sock->remote_addr;
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_get_type(net_socket_t* sock, net_socket_type_t* type)
 {
-    sock = 0;
-    type = 0;
-    return 0;
+    if (!sock || !type)
+        return NET_ERROR_INVALID_PARAM;
+
+    *type = sock->type;
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_get_protocol(net_socket_t* sock, net_protocol_t* protocol)
 {
-    sock = 0;
-    protocol = 0;
-    return 0;
+    if (!sock || !protocol)
+        return NET_ERROR_INVALID_PARAM;
+
+    *protocol = sock->protocol;
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_last_error(net_socket_t* sock, net_error_t* error)
 {
-    sock = 0;
-    error = 0;
-    return 0;
+    if (!sock || !error)
+        return NET_ERROR_INVALID_PARAM;
+
+    *error = sock->error;
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_last_platform_error(net_socket_t* sock, const void** platform_error)
 {
-    sock = 0;
-    platform_error = 0;
-    return 0;
+    if (!sock || !platform_error)
+        return NET_ERROR_INVALID_PARAM;
+
+    *platform_error = (const void*)sock->last_error;
+    return NET_SUCCESS;
 }

@@ -2,22 +2,49 @@
 
 net_error_t linux_net_register()
 {
-    return 0;
+    if (g_LinuxContext.Initialized)
+        return NET_SUCCESS;
+    
+    g_LinuxContext.Initialized = TRUE;
+    g_LinuxContext.Activated = FALSE;
+    
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_activate(const size_t limitMS)
 {
-    return 0;
+    if (!g_LinuxContext.Initialized)
+        return NET_ERROR_NOT_REGISTER;
+    
+    if (g_LinuxContext.Activated)
+        return NET_SUCCESS;
+    
+    // В Linux инициализация мгновенна, limitMS не импользуется
+
+    g_LinuxContext.Activated = TRUE;
+    
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_is_ready()
 {
-    return 0;
+    if (!g_LinuxContext.Initialized)
+        return NET_ERROR_NOT_REGISTER;
+    else if (!g_LinuxContext.Activated)
+        return NET_ERROR_NOT_INITIALIZED;
+    else
+        return NET_SUCCESS;
 }
 
 net_error_t linux_net_cleanup()
 {
-    return 0;
+    if (!g_LinuxContext.Initialized)
+        return NET_ERROR_NOT_REGISTER;
+    
+    g_LinuxContext.Activated = FALSE;
+    g_LinuxContext.Initialized = FALSE;
+    
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_address_parse(const char* str, net_family_t ip_family, net_address_t* addr)

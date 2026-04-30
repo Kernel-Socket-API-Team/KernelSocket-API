@@ -17,6 +17,15 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 
+// Глобальный контекст Linux
+typedef struct LINUX_CONTEXT
+{
+    BOOLEAN Initialized;
+    BOOLEAN Activated;
+} LINUX_CONTEXT, *PLINUX_CONTEXT;
+
+extern LINUX_CONTEXT g_LinuxContext;
+
 typedef enum
 {
     SOCK_STATE_INIT = 0,      // Только создан
@@ -27,7 +36,7 @@ typedef enum
 } net_socket_state_t;
 
 // Конвертация ошибок
-net_error_t convert_status_from_linux(int error);
+net_error_t convert_status_from_linux(int error, net_socket_t* sock)
 
 typedef struct LINUX_SOCKET_IMPL
 {
