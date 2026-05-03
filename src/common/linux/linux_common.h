@@ -3,31 +3,18 @@
 
 #include "../../adapters/linux/linux_adapter.h"
 #include "../common.h"
-#include <linux/init.h>
-#include <linux/kernel.h>
-#include <linux/module.h>
 
-// Работа с сокетами
-#include <linux/in.h>
-#include <linux/inet.h>
-#include <linux/net.h>
-#include <net/sock.h>
-
-// Вспомогательные заголовочные файлы
-#include <linux/slab.h>
-#include <linux/string.h>
-
-typedef enum
-{
-    SOCK_STATE_INIT = 0,      // Только создан
-    SOCK_STATE_BOUND = 1,     // Привязан к адресу
-    SOCK_STATE_LISTENING = 2, // TCP в режиме прослушивания
-    SOCK_STATE_CONNECTED = 3, // TCP подключен (клиент или принятый)
-    SOCK_STATE_UDP = 4,       // UDP сокет
-} net_socket_state_t;
 
 // Конвертация ошибок
 net_error_t convert_status_from_linux(int error);
+
+// Вспомогательные функции linux_net_address_parse(...)
+net_error_t parse_ipv4_address(const char* str, net_address_t* addr);
+net_error_t parse_ipv6_address(const char* str, net_address_t* addr);
+
+// Вспомогательные функции linux_net_address_to_string(...)
+const char* ipv4_to_string(__be32 addr, char* buffer, size_t size);
+const char* ipv6_to_string(const u8* addr, char* buffer, size_t size);
 
 typedef struct LINUX_SOCKET_IMPL
 {
