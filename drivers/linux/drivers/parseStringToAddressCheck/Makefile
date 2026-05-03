@@ -1,11 +1,11 @@
-KERNEL_VERSION := 6.8.0-107-generic
+KERNEL_VERSION := 6.8.0-101-generic
 KDIR := /lib/modules/$(KERNEL_VERSION)/build
 PWD := $(shell pwd)
 OUT_DIR := ../../../../build/linux
 
-obj-m += driverCheckSend.o
+obj-m += parseStringToAddressCheck.o
 
-driverCheckSend-y := driver.o ../../../../compileLibraryForLinux/ksockapi_sources.o 
+parseStringToAddressCheck-y := driver.o ../../../../compileLibraryForLinux/ksockapi_sources.o 
 
 ccflags-y += -I../../../../KernelSocket-API/include 
 ccflags-y += -I../../../../KernelSocket-API/compileLibraryForLinux/src
@@ -14,7 +14,7 @@ all:
 	$(MAKE) -C $(KDIR) M=$(PWD) modules
 
 	mkdir -p $(OUT_DIR)
-	cp $(PWD)/driverCheckSend.ko $(OUT_DIR)/
+	cp $(PWD)/parseStringToAddressCheck.ko $(OUT_DIR)/
 	$(MAKE) -C $(KDIR) M=$(PWD) clean
 
 clean:
