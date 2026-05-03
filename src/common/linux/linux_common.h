@@ -13,15 +13,6 @@ typedef struct LINUX_CONTEXT
 
 extern LINUX_CONTEXT g_LinuxContext;
 
-typedef enum
-{
-    SOCK_STATE_INIT = 0,      // Только создан
-    SOCK_STATE_BOUND = 1,     // Привязан к адресу
-    SOCK_STATE_LISTENING = 2, // TCP в режиме прослушивания
-    SOCK_STATE_CONNECTED = 3, // TCP подключен (клиент или принятый)
-    SOCK_STATE_UDP = 4,       // UDP сокет
-} net_socket_state_t;
-
 // Конвертация ошибок
 net_error_t convert_status_from_linux(int error, net_socket_t* sock);
 

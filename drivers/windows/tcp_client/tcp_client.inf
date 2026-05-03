@@ -1,0 +1,62 @@
+;
+; udp_client.inf
+;
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = System ; TODO: specify appropriate Class
+ClassGuid   = {4d36e97d-e325-11ce-bfc1-08002be10318} ; TODO: specify appropriate ClassGuid
+Provider    = %ManufacturerName%
+CatalogFile = udp_client.cat
+DriverVer   = ; TODO: set DriverVer in stampinf property pages
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 13
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+udp_client.sys = 1,,
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName% = Standard,NT$ARCH$.10.0...16299 ; %13% support introduced in build 16299
+
+[Standard.NT$ARCH$.10.0...16299]
+%udp_client.DeviceDesc% = udp_client_Device, Root\udp_client ; TODO: edit hw-id
+
+[udp_client_Device.NT]
+CopyFiles = File_Copy
+
+[File_Copy]
+udp_client.sys
+
+;-------------- Service installation
+[udp_client_Device.NT.Services]
+AddService = udp_client,%SPSVCINST_ASSOCSERVICE%, udp_client_Service_Inst
+
+; -------------- udp_client driver install sections
+[udp_client_Service_Inst]
+DisplayName    = %udp_client.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %13%\udp_client.sys
+
+[udp_client_Device.NT.Wdf]
+KmdfService = udp_client, udp_client_wdfsect
+
+[udp_client_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+[Strings]
+SPSVCINST_ASSOCSERVICE = 0x00000002
+ManufacturerName = "<Your manufacturer name>" ;TODO: Replace with your manufacturer name
+DiskName = "udp_client Installation Disk"
+udp_client.DeviceDesc = "udp_client Device"
+udp_client.SVCDESC = "udp_client Service"

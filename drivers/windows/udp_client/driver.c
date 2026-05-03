@@ -375,7 +375,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 
                 // Переводим адрес в двоичное представление
                 const char* terminator = NULL; // Очень важно использовать terminator именно так!
-                Status = RtlIpv4StringToAddressA("192.168.0.112", FALSE, &terminator, &ip);
+                Status = RtlIpv4StringToAddressA("192.168.218.1", FALSE, &terminator, &ip);
 
                 if (!NT_SUCCESS(Status))
                     goto Cleanup;
