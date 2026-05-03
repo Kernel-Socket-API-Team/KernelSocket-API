@@ -29,6 +29,93 @@
  *   обязательного указания scope_id для работы.
  */
 
+VOID TestSocketInfo(net_socket_t* sock, const char* sock_name)
+{
+    net_error_t err;
+    net_socket_type_t type;
+    net_protocol_t protocol;
+    net_address_t addr;
+    net_address_t remote_addr;
+    net_error_t last_err;
+    void* plat_err;
+
+    DbgPrint("[TEST] === %s ===\n", sock_name);
+
+    // get_type
+    err = net_socket_get_type(sock, &type);
+    if (err == NET_SUCCESS)
+    {
+        DbgPrint("[TEST] get_type: %d\n", type);
+    }
+    else
+    {
+        DbgPrint("[TEST] get_type FAILED: %d\n", err);
+    }
+
+    // get_protocol
+    err = net_socket_get_protocol(sock, &protocol);
+    if (err == NET_SUCCESS)
+    {
+        DbgPrint("[TEST] get_protocol: %d\n", protocol);
+    }
+    else
+    {
+        DbgPrint("[TEST] get_protocol FAILED: %d\n", err);
+    }
+
+    // get_address (локальный адрес)
+    err = net_socket_get_address(sock, &addr);
+    if (err == NET_SUCCESS)
+    {
+        char ip_str[NET_ADDRSTRLEN];
+        err = net_address_to_string(&addr, ip_str, sizeof(ip_str), TRUE);
+        if (err == NET_SUCCESS)
+            DbgPrint("[TEST] get_address (local): %s\n", ip_str);
+    }
+    else
+    {
+        DbgPrint("[TEST] get_address (local) FAILED: %d\n", err);
+    }
+
+    // get_remote_address (удалённый адрес)
+    err = net_socket_get_remote_address(sock, &remote_addr);
+    if (err == NET_SUCCESS)
+    {
+        char ip_str[NET_ADDRSTRLEN];
+        err = net_address_to_string(&remote_addr, ip_str, sizeof(ip_str), TRUE);
+        if (err == NET_SUCCESS)
+            DbgPrint("[TEST] get_remote_address: %s\n", ip_str);
+    }
+    else
+    {
+        DbgPrint("[TEST] get_remote_address FAILED: %d\n", err);
+    }
+
+    // last_error
+    err = net_socket_last_error(sock, &last_err);
+    if (err == NET_SUCCESS)
+    {
+        DbgPrint("[TEST] last_error: %d\n", last_err);
+    }
+    else
+    {
+        DbgPrint("[TEST] last_error getter FAILED: %d\n", err);
+    }
+
+    // last_platform_error
+    err = net_socket_last_platform_error(sock, &plat_err);
+    if (err == NET_SUCCESS)
+    {
+        DbgPrint("[TEST] last_platform_error: %p\n", (NTSTATUS*)plat_err);
+    }
+    else
+    {
+        DbgPrint("[TEST] last_platform_error getter FAILED: %d\n", err);
+    }
+
+    DbgPrint("[TEST] === end ===\n\n");
+}
+
 #define PORT_TCP 4444
 #define PORT_UDP 4445
 #define BUFFER_SIZE 1024
@@ -61,26 +148,29 @@ VOID ServerThreadTCP(PVOID Context)
     if (err != NET_SUCCESS)
         goto exit;
 
+    // ТЕСТ: геттеры на новом сокете
+    TestSocketInfo(g_ServerSockTCP, "Server socket (before bind)");
+
     // Привязка для TCP
-    /*
-    addr.family = NET_AF_INET6;
+    err = net_address_parse("[::]", NET_AF_INET6, &addr);
     net_htons(PORT_TCP, &addr.port);
-    addr.addr.ipv4 = 0;*/
 
-    /*
-    addr.family = NET_AF_INET6;
-    net_htons(PORT_TCP, &addr.port);
-    memset(addr.addr.ipv6, 0, 16); // :: - все IPv6 интерфейсы
-    */
-
-    err = net_address_parse("[fe80::a921:2d1f:61fb:8942%9]", NET_AF_INET6, &addr);
-    net_htons(PORT_TCP, &addr.port);
     if (err != NET_SUCCESS)
         goto close_server;
+
+    // ТЕСТ: get_address до bind (должна быть ошибка или неполный адрес)
+    net_address_t test_addr;
+    if (net_socket_get_address(g_ServerSockTCP, &test_addr) != NET_SUCCESS)
+    {
+        DbgPrint("[TEST] get_address before bind: correctly failed\n");
+    }
 
     err = net_socket_bind(g_ServerSockTCP, &addr);
     if (err != NET_SUCCESS)
         goto close_server;
+
+    // ТЕСТ: геттеры после bind
+    TestSocketInfo(g_ServerSockTCP, "Server socket (after bind)");
 
     DbgPrint("[SERVER_TCP] Ready on port %d\n", PORT_TCP);
 
@@ -94,6 +184,9 @@ VOID ServerThreadTCP(PVOID Context)
                 DbgPrint("[SERVER_TCP] Accept error: %d\n", err);
             continue;
         }
+
+        // ТЕСТ: геттеры на клиентском сокете
+        TestSocketInfo(client_sock, "Client socket (accepted)");
 
         DbgPrint("[SERVER_TCP] + Client connected\n");
 
@@ -112,7 +205,7 @@ VOID ServerThreadTCP(PVOID Context)
             }
 
             if (received == 0)
-                break; // Клиент отключился
+                break;
 
             buffer[received] = '\0';
             char ip_str[NET_ADDRSTRLEN];
@@ -178,7 +271,7 @@ VOID ServerThreadUDP(PVOID Context)
     memset(addr.addr.ipv6, 0, 16); // :: - все IPv6 интерфейсы
     */
 
-    err = net_address_parse("[fe80::a921:2d1f:61fb:8942%9]", NET_AF_INET6, &addr);
+    err = net_address_parse("[::]", NET_AF_INET6, &addr);
     net_htons(PORT_UDP, &addr.port);
     if (err != NET_SUCCESS)
         goto close_socket;

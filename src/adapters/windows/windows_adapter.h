@@ -25,6 +25,7 @@ extern "C"
     net_error_t windows_net_ntohs(uint16_t, uint16_t*);
     net_error_t windows_net_address_to_string(const net_address_t*, char*, size_t, bool);
     net_error_t windows_net_socket_get_address(net_socket_t*, net_address_t*);
+    net_error_t windows_net_socket_get_remote_address(net_socket_t*, net_address_t*);
     net_error_t windows_net_socket_get_type(net_socket_t*, net_socket_type_t*);
     net_error_t windows_net_socket_get_protocol(net_socket_t*, net_protocol_t*);
     net_error_t windows_net_socket_last_error(net_socket_t*, net_error_t*);

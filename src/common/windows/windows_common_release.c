@@ -16,7 +16,7 @@ net_error_t windows_net_register()
 
     Status = WskRegister(&WskClientNpi, &g_WskContext.Registration);
     if (!NT_SUCCESS(Status))
-        return convert_status_from_windows(Status);
+        return convert_status_from_windows(Status, NULL);
 
     g_WskContext.Registered = TRUE;
 
@@ -64,7 +64,7 @@ net_error_t windows_net_activate(const size_t limitMS)
     }
     else
     {
-        return convert_status_from_windows(Status);
+        return convert_status_from_windows(Status, NULL);
     }
 }
 
@@ -129,7 +129,7 @@ net_error_t windows_net_address_parse(const char* str, net_family_t ip_family, n
         status = normalize_ipv6_scope_id(str, normalized, sizeof(normalized));
 
         if (!NT_SUCCESS(status))
-            return convert_status_from_windows(status);
+            return convert_status_from_windows(status, NULL);
 
         // Формат строки может быть: "fe80::1234" или "fe80::1234%13" или "fe80::1234%ens33"
         status = RtlIpv6StringToAddressExA(normalized, &ip6, &scope_id, &port);
@@ -147,7 +147,7 @@ net_error_t windows_net_address_parse(const char* str, net_family_t ip_family, n
         return NET_ERROR_INVALID_PARAM;
     }
 
-    return convert_status_from_windows(status);
+    return convert_status_from_windows(status, NULL);
 }
 
 net_error_t windows_net_htons(uint16_t hostshort, uint16_t* netshort)
@@ -211,5 +211,5 @@ net_error_t windows_net_address_to_string(const net_address_t* addr, char* buffe
         return NET_ERROR_INVALID_PARAM;
     }
 
-    return convert_status_from_windows(status);
+    return convert_status_from_windows(status, NULL);
 }

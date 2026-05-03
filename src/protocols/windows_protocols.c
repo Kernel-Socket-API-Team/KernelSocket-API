@@ -110,7 +110,7 @@ net_error_t windows_net_socket_create(net_family_t family, net_protocol_t protoc
     {
         IoFreeIrp(irp);
         ExFreePool(sock);
-        return convert_status_from_windows(status);
+        return convert_status_from_windows(status, NULL);
     }
 
     IoFreeIrp(irp);
@@ -132,6 +132,7 @@ net_error_t windows_net_socket_create(net_family_t family, net_protocol_t protoc
     sock->context = impl;
     sock->protocol = protocol;
     sock->type = type;
+    
 
     *socketOut = sock;
 
@@ -147,31 +148,10 @@ net_error_t windows_net_socket_close(net_socket_t* sock)
     if (!impl || !impl->wsk_socket)
         return NET_ERROR_INVALID_STATE;
 
-    // Сохраняем указатель на wsk_socket перед очисткой
+    // Сохраняем указатель на wsk_socket
     PWSK_SOCKET wsk = impl->wsk_socket;
-    PWSK_SOCKET active = impl->active_client;
 
-    // Закрываем клиентский сокет (если есть)
-    if (active && active != wsk)
-    {
-        PIRP irp = IoAllocateIrp(1, FALSE);
-        if (irp)
-        {
-            KEVENT event;
-            KeInitializeEvent(&event, NotificationEvent, FALSE);
-            IoSetCompletionRoutine(irp, wsk_completion, &event, TRUE, TRUE, TRUE);
-
-            ((PWSK_PROVIDER_BASIC_DISPATCH)active->Dispatch)->WskCloseSocket(active, irp);
-
-            if (irp->IoStatus.Status == STATUS_PENDING)
-            {
-                KeWaitForSingleObject(&event, Executive, KernelMode, FALSE, NULL);
-            }
-            IoFreeIrp(irp);
-        }
-    }
-
-    // Закрываем серверный сокет - прерывает все блокирующие функции сокета
+    // Закрываем сокет
     if (wsk)
     {
         PIRP irp = IoAllocateIrp(1, FALSE);
@@ -286,7 +266,7 @@ net_error_t windows_net_socket_bind(net_socket_t* sock, const net_address_t* add
 
     IoFreeIrp(irp);
 
-    return NT_SUCCESS(status) ? NET_SUCCESS : convert_status_from_windows(status);
+    return convert_status_from_windows(status, sock);
 }
 
 net_error_t windows_net_socket_connect(net_socket_t* sock, const net_address_t* addr)
@@ -366,7 +346,7 @@ net_error_t windows_net_socket_accept(net_socket_t* server, net_socket_t** clien
     if (!NT_SUCCESS(status) || !newClient)
     {
         ExFreePool(client);
-        return convert_status_from_windows(status);
+        return convert_status_from_windows(status, server);
     }
 
     // Получаем адрес клиента
@@ -432,8 +412,8 @@ net_error_t windows_net_socket_accept(net_socket_t* server, net_socket_t** clien
     }
 
     RtlZeroMemory(client_impl, sizeof(WINDOWS_SOCKET_IMPL));
-    client_impl->active_client = newClient;
     client_impl->wsk_socket = newClient;
+    KeInitializeEvent(&client_impl->completion_event, NotificationEvent, FALSE);
 
     client->context = client_impl;
     client->protocol = NET_PROTO_TCP;
@@ -441,7 +421,8 @@ net_error_t windows_net_socket_accept(net_socket_t* server, net_socket_t** clien
 
     *client_out = client;
 
-    return NET_SUCCESS;
+    convert_status_from_windows(STATUS_SUCCESS, *client_out);
+    return convert_status_from_windows(STATUS_SUCCESS, server);
 }
 
 net_error_t windows_net_socket_receive(net_socket_t* sock, void* buffer, size_t buffer_size, net_address_t* from_addr,
@@ -484,15 +465,15 @@ net_error_t windows_net_socket_receive(net_socket_t* sock, void* buffer, size_t 
     if (sock->protocol == NET_PROTO_TCP)
     {
 
-        if (!impl->active_client)
+        if (!impl->wsk_socket)
         {
             IoFreeMdl(wsk_buf.Mdl);
             IoFreeIrp(irp);
             return NET_ERROR_INVALID_STATE;
         }
 
-        status = ((PWSK_PROVIDER_CONNECTION_DISPATCH)impl->active_client->Dispatch)
-                     ->WskReceive(impl->active_client, &wsk_buf, 0, irp);
+        status = ((PWSK_PROVIDER_CONNECTION_DISPATCH)impl->wsk_socket->Dispatch)
+                     ->WskReceive(impl->wsk_socket, &wsk_buf, 0, irp);
 
         if (from_addr)
             *from_addr = sock->addr; // копируем сохраненный адрес
@@ -544,53 +525,64 @@ net_error_t windows_net_socket_receive(net_socket_t* sock, void* buffer, size_t 
     IoFreeMdl(wsk_buf.Mdl);
 
     if (!NT_SUCCESS(status))
-        return convert_status_from_windows(status);
+        return convert_status_from_windows(status, sock);
 
     if (received)
         *received = bytes_received;
 
-    return NET_SUCCESS;
+    return convert_status_from_windows(status, sock);
 }
 
 net_error_t windows_net_socket_get_address(net_socket_t* sock, net_address_t* addr)
 {
-    sock = 0;
-    addr = 0;
-    return 0;
+    if (!sock || !addr)
+        return NET_ERROR_INVALID_PARAM;
+
+    *addr = sock->addr;
+    return NET_SUCCESS;
+}
+
+net_error_t windows_net_socket_get_remote_address(net_socket_t* sock, net_address_t* addr)
+{
+    if (!sock || !addr)
+        return NET_ERROR_INVALID_PARAM;
+
+    *addr = sock->remote_addr;
+    return NET_SUCCESS;
 }
 
 net_error_t windows_net_socket_get_type(net_socket_t* sock, net_socket_type_t* type)
 {
-    sock = 0;
-    type = 0;
-    return 0;
+    if (!sock || !type)
+        return NET_ERROR_INVALID_PARAM;
+
+    *type = sock->type;
+    return NET_SUCCESS;
 }
 
 net_error_t windows_net_socket_get_protocol(net_socket_t* sock, net_protocol_t* protocol)
 {
-    sock = 0;
-    protocol = 0;
-    return 0;
-}
-
-// Данная функция требует тестов!!!!
-net_error_t windows_net_socket_last_error(net_socket_t* sock, net_error_t* error)
-{
-    if (!sock)
+    if (!sock || !protocol)
         return NET_ERROR_INVALID_PARAM;
 
-    error = &sock->error;
-
+    *protocol = sock->protocol;
     return NET_SUCCESS;
 }
 
-// Данная функция требует тестов!!!!
-net_error_t windows_net_socket_last_platform_error(net_socket_t* sock, const void** platform_error)
+net_error_t windows_net_socket_last_error(net_socket_t* sock, net_error_t* error)
 {
-    if (!sock)
+    if (!sock || !error)
         return NET_ERROR_INVALID_PARAM;
 
-    platform_error = sock->last_error;
+    *error = sock->error;
+    return NET_SUCCESS;
+}
 
+net_error_t windows_net_socket_last_platform_error(net_socket_t* sock, const void** platform_error)
+{
+    if (!sock || !platform_error)
+        return NET_ERROR_INVALID_PARAM;
+
+    *platform_error = (const void*)sock->last_error;
     return NET_SUCCESS;
 }

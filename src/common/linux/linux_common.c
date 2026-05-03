@@ -1,42 +1,58 @@
 #include "linux_common.h"
 
-net_error_t convert_status_from_linux(int error)
-{
+LINUX_CONTEXT g_LinuxContext = {
+    .Initialized = false,
+    .Activated = false
+};
 
+net_error_t convert_status_from_linux(int error, net_socket_t* sock)
+{
     if (error >= 0)
     {
+        if (sock)
+        {
+            sock->error = NET_SUCCESS;
+            sock->last_error = (void*)(long)error;  // сохраняем 0 как успех
+        }
         return NET_SUCCESS;
     }
 
-    int code = -error;
+    net_error_t net_error;
+    int code = -error;  // Получаем положительный код ошибки
 
     switch (code)
     {
     case ENOMEM:
-        return NET_ERROR_NO_MEMORY;
+        net_error = NET_ERROR_NO_MEMORY;
+        break;
     case EACCES:
-        return NET_ERROR_ACCESS_DENIED;
     case EPERM:
-        return NET_ERROR_ACCESS_DENIED;
+        net_error = NET_ERROR_ACCESS_DENIED;
+        break;
     case EINVAL:
-        return NET_ERROR_INVALID_PARAM;
+        net_error = NET_ERROR_INVALID_PARAM;
+        break;
     case ETIMEDOUT:
-        return NET_ERROR_TIMEOUT;
+        net_error = NET_ERROR_TIMEOUT;
+        break;
     case EMSGSIZE:
-        return NET_ERROR_BUFFER_TOO_SMALL;
+        net_error = NET_ERROR_BUFFER_TOO_SMALL;
+        break;
     case ENOBUFS:
-        return NET_ERROR_NO_MEMORY;
-
-    // Специфические ошибки
-    case ECONNREFUSED:
-    case EADDRINUSE:
-    case ENETUNREACH:
-    case EAGAIN:
-        return NET_ERROR_GENERIC;
-
+        net_error = NET_ERROR_NO_MEMORY;
+        break;
     default:
-        return NET_ERROR_GENERIC;
+        net_error = NET_ERROR_GENERIC;
+        break;
     }
+
+    if (sock)
+    {
+        sock->error = net_error;
+        sock->last_error = (void*)(long)error;  // сохраняем оригинальный код ошибки
+    }
+
+    return net_error;
 }
 
 static uint32_t get_interface_index(const char* ifname)
