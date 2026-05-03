@@ -39,6 +39,30 @@ extern "C"
 #include <linux/kernel.h>
 #include <linux/stddef.h>
 #include <linux/types.h>
+
+#include <linux/init.h>
+#include <linux/module.h>
+
+// Работа с сокетами
+#include <linux/in.h>
+#include <linux/inet.h>
+#include <linux/net.h>
+#include <net/sock.h>
+
+// Вспомогательные заголовочные файлы
+#include <linux/slab.h>
+#include <linux/string.h>
+
+#include <linux/socket.h>
+#include <linux/in6.h>
+#include <linux/if.h>
+#include <net/net_namespace.h>
+#include <net/if_inet6.h>
+
+#include <linux/netdevice.h>
+
+#include <net/ip.h>
+#include <net/ipv6.h>
 #endif
 
     /*

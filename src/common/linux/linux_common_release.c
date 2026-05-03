@@ -21,70 +21,20 @@ net_error_t linux_net_cleanup()
 
 net_error_t linux_net_address_parse(const char* str, net_family_t ip_family, net_address_t* addr)
 {
-    if (!str || !addr)
-    {
+    if (!str || !addr) {
         return NET_ERROR_INVALID_PARAM;
     }
-
-    int status = 0;
-
-    struct sockaddr_storage sock_addr = {0};
-
-    if (ip_family == NET_AF_INET4)
-    {
-        const char* ip4_ptr = str;
-        const char* port_ptr = strchr(str, ':');
-
-        char ip4_buf[NET_IPV4_PORT_STR_MAX];
-        strncpy(ip4_buf, ip4_ptr, (size_t)(port_ptr - ip4_ptr + 1));
-
-        ++port_ptr;
-
-        status = inet_pton_with_scope(&init_net, AF_INET, ip4_buf, port_ptr, &sock_addr);
-
-        struct sockaddr_in* ip4_addr = (struct sockaddr_in*)&sock_addr;
-
-        if (status == 0)
-        {
-            addr->family = NET_AF_INET4;
-            addr->port = ip4_addr->sin_port;
-            addr->addr.ipv4 = ip4_addr->sin_addr.s_addr;
-            addr->scope_id = 0;
-        }
+    
+    memset(addr, 0, sizeof(net_address_t));
+    
+    if (ip_family == NET_AF_INET4) {
+        return parse_ipv4_address(str, addr);
+    } else if (ip_family == NET_AF_INET6) {
+        return parse_ipv6_address(str, addr);
     }
-    else if (ip_family == NET_AF_INET6)
-    {
-        if (*str == '[')
-        {
-            const char* ip6_ptr = str;
-            const char* port_ptr = strchr(str, ']');
-
-            char ip6_buf[NET_IPV6_PORT_STR_MAX];
-            strncpy(ip6_buf, ip6_ptr, (size_t)(port_ptr - ip6_ptr + 1));
-
-            port_ptr += 2;
-
-            status = inet_pton_with_scope(&init_net, AF_INET6, ip6_buf, port_ptr, &sock_addr);
-        }
-        else
-        {
-            status = inet_pton_with_scope(&init_net, AF_INET6, str, NULL, &sock_addr);
-        }
-
-        struct sockaddr_in6* ip6_addr = (struct sockaddr_in6*)&sock_addr;
-
-        if (status)
-        {
-            addr->family = NET_AF_INET6;
-            addr->port = ip6_addr->sin6_port;
-            memcpy(addr->addr.ipv6, ip6_addr->sin6_addr.in6_u.u6_addr8, 16);
-            addr->scope_id = ip6_addr->sin6_scope_id;
-        }
-    }
-
-    return convert_status_from_linux(status);
+    
+    return NET_ERROR_INVALID_PARAM;
 }
-
 
 net_error_t linux_net_htons(uint16_t hostshort, uint16_t* netshort)
 {
@@ -98,50 +48,78 @@ net_error_t linux_net_ntohs(uint16_t netshort, uint16_t* hostshort)
     return NET_SUCCESS;
 }
 
-net_error_t linux_net_address_to_string(const net_address_t* addr, char* buffer, size_t buffer_size, bool include_port) {
-    // if (!addr || !buffer || !buffer_size)
-    // {
-    //     return NET_ERROR_INVALID_PARAM;
-    // }
-
-    // net_addr_str_size_t str_size = net_address_required_size(addr->family, include_port);
-    // if (str_size.max == 0)
-    // {
-    //     return NET_ERROR_INVALID_PARAM;
-    // }
-    // else if (buffer_size < str_size.max)
-    // {
-    //     return NET_ERROR_BUFFER_TOO_SMALL;
-    // }
-
-    // uint16_t host_port = include_port ? ntohs(addr->port) : 0;
-    // char port_buffer[8];
-    // sprintf(port_buffer, "%" PRIu16 "\n", host_port);
-
-    // int status = 0;
-    // uint64_t size = (uint64_t)buffer_size;
-
-    // if (addr->family == NET_AF_INET4)
-    // {
-    //     struct in_addr ip4;
-    //     ip4.s_addr = addr->addr.ipv4;
-    //     status = inet_ntop(AF_INET, &ip4, buffer, size);
-    // }
-    // else if (addr->family == NET_AF_INET6)
-    // {
-    //     struct in6_addr ip6;
-    //     memcpy(addr->addr.ipv6, ip6.in6_u.u6_addr8, 16);
-    //     status = inet_ntop(AF_INET6, &ip6, buffer, size);
-    // }
-    // strcat(buffer, port_buffer);
-
-    // if (!status)
-    // {
-    //     return NET_ERROR_INVALID_PARAM;
-    // }
-    // else
-    // {
-    //     return NET_SUCCESS;
-    // }
-    return 0;
+net_error_t linux_net_address_to_string(const net_address_t* addr, char* buffer, size_t buffer_size, bool include_port)
+{
+    char ip_str[INET6_ADDRSTRLEN] = {0};
+    const char* ip_result = NULL;
+    int written = 0;
+    
+    // Проверка параметров
+    if (!addr || !buffer || buffer_size == 0) {
+        return NET_ERROR_INVALID_PARAM;
+    }
+    
+    // Обнуляем буфер
+    memset(buffer, 0, buffer_size);
+    
+    // Преобразуем IP адрес в строку
+    if (addr->family == NET_AF_INET4) {
+        // Для IPv4 используем простой формат
+        ip_result = ipv4_to_string(addr->addr.ipv4, ip_str, sizeof(ip_str));
+        
+        if (!ip_result) {
+            return NET_ERROR_INVALID_PARAM;
+        }
+        
+        // Формируем строку для IPv4
+        if (include_port && addr->port != 0) {
+            written = snprintf(buffer, buffer_size, "%s:%d", 
+                             ip_str, ntohs(addr->port));
+        } else {
+            written = snprintf(buffer, buffer_size, "%s", ip_str);
+        }
+        
+        if (written < 0 || (size_t)written >= buffer_size) {
+            return NET_ERROR_BUFFER_TOO_SMALL;
+        }
+        
+    } else if (addr->family == NET_AF_INET6) {
+        // Для IPv6 используем кастомный форматтер
+        ip_result = ipv6_to_string(addr->addr.ipv6, ip_str, sizeof(ip_str));
+        
+        if (!ip_result) {
+            return NET_ERROR_INVALID_PARAM;
+        }
+        
+        // Формируем строку для IPv6
+        if (include_port && addr->port != 0) {
+            if (addr->scope_id != 0) {
+                // Формат: "[IP%SCOPE]:PORT"
+                written = snprintf(buffer, buffer_size, "[%s%%%u]:%d", 
+                                 ip_str, addr->scope_id, ntohs(addr->port));
+            } else {
+                // Формат: "[IP]:PORT"
+                written = snprintf(buffer, buffer_size, "[%s]:%d", 
+                                 ip_str, ntohs(addr->port));
+            }
+        } else {
+            if (addr->scope_id != 0) {
+                // Формат: "IP%SCOPE"
+                written = snprintf(buffer, buffer_size, "%s%%%u", 
+                                 ip_str, addr->scope_id);
+            } else {
+                // Формат: "IP"
+                written = snprintf(buffer, buffer_size, "%s", ip_str);
+            }
+        }
+        
+        if (written < 0 || (size_t)written >= buffer_size) {
+            return NET_ERROR_BUFFER_TOO_SMALL;
+        }
+        
+    } else {
+        return NET_ERROR_INVALID_PARAM;
+    }
+    
+    return NET_SUCCESS;
 }
