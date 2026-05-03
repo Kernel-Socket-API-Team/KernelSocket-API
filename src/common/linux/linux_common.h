@@ -4,9 +4,26 @@
 #include "../../adapters/linux/linux_adapter.h"
 #include "../common.h"
 
+// Глобальный контекст Linux
+typedef struct LINUX_CONTEXT
+{
+    bool Initialized;
+    bool Activated;
+} LINUX_CONTEXT, *PLINUX_CONTEXT;
+
+extern LINUX_CONTEXT g_LinuxContext;
+
+typedef enum
+{
+    SOCK_STATE_INIT = 0,      // Только создан
+    SOCK_STATE_BOUND = 1,     // Привязан к адресу
+    SOCK_STATE_LISTENING = 2, // TCP в режиме прослушивания
+    SOCK_STATE_CONNECTED = 3, // TCP подключен (клиент или принятый)
+    SOCK_STATE_UDP = 4,       // UDP сокет
+} net_socket_state_t;
 
 // Конвертация ошибок
-net_error_t convert_status_from_linux(int error);
+net_error_t convert_status_from_linux(int error, net_socket_t* sock);
 
 // Вспомогательные функции linux_net_address_parse(...)
 net_error_t parse_ipv4_address(const char* str, net_address_t* addr);

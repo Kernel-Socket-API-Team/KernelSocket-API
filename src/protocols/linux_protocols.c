@@ -4,11 +4,9 @@ net_error_t linux_net_socket_create(net_family_t family, net_protocol_t protocol
                                     net_socket_t** socketOut)
 {
 
-    /* TODO (требуется написать linux_net_is_ready):
     net_error_t lib_state = linux_net_is_ready();
     if (lib_state != NET_SUCCESS)
         return lib_state;
-    */
 
     if (!socketOut)
         return NET_ERROR_INVALID_PARAM;
@@ -36,7 +34,7 @@ net_error_t linux_net_socket_create(net_family_t family, net_protocol_t protocol
     kernel_socket = NULL;
     status = sock_create_kern(&init_net, af, kind, proto, &kernel_socket);
     if (status < 0)
-        return convert_status_from_linux(status);
+        return convert_status_from_linux(status, NULL);
 
     // Выделяем память
     sock = kmalloc(sizeof(net_socket_t), GFP_KERNEL);
@@ -66,6 +64,7 @@ net_error_t linux_net_socket_create(net_family_t family, net_protocol_t protocol
 
     *socketOut = sock;
 
+    convert_status_from_linux(0, sock);
     return NET_SUCCESS;
 }
 
@@ -91,6 +90,7 @@ net_error_t linux_net_socket_close(net_socket_t* sock)
 
     kfree(sock);
 
+    convert_status_from_linux(0, sock);
     return NET_SUCCESS;
 }
 
@@ -98,14 +98,14 @@ net_error_t linux_net_socket_bind(net_socket_t* sock, const net_address_t* addr)
 {
 
     if (!sock || !addr)
-        return NET_ERROR_INVALID_PARAM;
+        return convert_status_from_linux(-EINVAL, sock);
 
     if (sock->addr.family != addr->family)
-        return NET_ERROR_INVALID_PARAM;
+        return convert_status_from_linux(-EINVAL, sock);
 
     PLINUX_SOCKET_IMPL impl = (PLINUX_SOCKET_IMPL)sock->context;
     if (!impl || !impl->kernel_socket)
-        return NET_ERROR_INVALID_STATE;
+        return convert_status_from_linux(-EINVAL, sock);
 
     int status;
 
@@ -138,27 +138,28 @@ net_error_t linux_net_socket_bind(net_socket_t* sock, const net_address_t* addr)
     }
     else
     {
-        return NET_ERROR_INVALID_PARAM;
+        return convert_status_from_linux(-EINVAL, sock);
     }
 
     if (status < 0)
     {
-        return convert_status_from_linux(status);
+        return convert_status_from_linux(status, sock);
     }
 
     sock->addr = *addr;
 
+    convert_status_from_linux(0, sock);
     return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_connect(net_socket_t* sock, const net_address_t* addr)
 {
     if (!sock || !addr)
-        return NET_ERROR_INVALID_PARAM;
+        return convert_status_from_linux(-EINVAL, sock);
 
     PLINUX_SOCKET_IMPL impl = (PLINUX_SOCKET_IMPL)sock->context;
     if (!impl || !impl->kernel_socket)
-        return NET_ERROR_INVALID_STATE;
+        return convert_status_from_linux(-EINVAL, sock);
 
     int status;
 
@@ -185,16 +186,17 @@ net_error_t linux_net_socket_connect(net_socket_t* sock, const net_address_t* ad
     }
     else
     {
-        return NET_ERROR_INVALID_PARAM;
+        return convert_status_from_linux(-EINVAL, sock);
     }
 
     if (status < 0)
     {
-        return convert_status_from_linux(status);
+        return convert_status_from_linux(status, sock);
     }
 
     sock->remote_addr = *addr;
 
+    convert_status_from_linux(0, sock);
     return NET_SUCCESS;
 }
 
@@ -202,11 +204,11 @@ net_error_t linux_net_socket_send(net_socket_t* sock, const void* data, size_t s
 {
 
     if (!sock || !data || size == 0)
-        return NET_ERROR_INVALID_PARAM;
+        return convert_status_from_linux(-EINVAL, sock);
 
     PLINUX_SOCKET_IMPL impl = (PLINUX_SOCKET_IMPL)sock->context;
     if (!impl || !impl->kernel_socket)
-        return NET_ERROR_INVALID_STATE;
+        return convert_status_from_linux(-EINVAL, sock);
 
     // Готовим данные для отправки
     struct kvec kv;
@@ -225,7 +227,7 @@ net_error_t linux_net_socket_send(net_socket_t* sock, const void* data, size_t s
 
         // Проверяем что remote_addr заполнен
         if (sock->remote_addr.port == 0)
-            return NET_ERROR_INVALID_STATE;
+            return convert_status_from_linux(-EINVAL, sock);
 
         if (sock->remote_addr.family == NET_AF_INET4)
         {
@@ -256,39 +258,40 @@ net_error_t linux_net_socket_send(net_socket_t* sock, const void* data, size_t s
     // Отправляем
     int status = kernel_sendmsg(impl->kernel_socket, &msg, &kv, 1, size);
     if (status < 0)
-        return convert_status_from_linux(status);
+        return convert_status_from_linux(status, sock);
 
     // Сколько байт отправили
     if (sent)
         *sent = (size_t)status;
 
+    convert_status_from_linux(0, sock);
     return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_accept(net_socket_t* server, net_socket_t** client_out)
 {
     if (!server || !client_out)
-        return NET_ERROR_INVALID_PARAM;
+        return convert_status_from_linux(-EINVAL, server);
 
     if (server->type != NET_SOCK_TYPE_TCP_LISTEN)
-        return NET_ERROR_INVALID_PROTOCOL;
+        return convert_status_from_linux(-EINVAL, server);
 
     PLINUX_SOCKET_IMPL impl = (PLINUX_SOCKET_IMPL)server->context;
     if (!impl || !impl->kernel_socket)
-        return NET_ERROR_INVALID_STATE;
+        return convert_status_from_linux(-EINVAL, server);
 
     int status;
 
     // Прослушиваем сокет
     status = kernel_listen(impl->kernel_socket, 1); // 1 клиент
     if (status < 0)
-        return convert_status_from_linux(status);
+        return convert_status_from_linux(status, server);
 
     // Принимаем входящий запрос в блокирующем режиме
     struct socket* new_socket = NULL;
     status = kernel_accept(impl->kernel_socket, &new_socket, 0);
     if (status < 0)
-        return convert_status_from_linux(status);
+        return convert_status_from_linux(status, server);
 
     // Выделяем память под клиентский сокет
     net_socket_t* client = (net_socket_t*)kmalloc(sizeof(net_socket_t), GFP_KERNEL);
@@ -343,6 +346,7 @@ net_error_t linux_net_socket_accept(net_socket_t* server, net_socket_t** client_
 
     *client_out = client;
 
+    convert_status_from_linux(0, server);
     return NET_SUCCESS;
 }
 
@@ -350,11 +354,11 @@ net_error_t linux_net_socket_receive(net_socket_t* sock, void* buffer, size_t bu
                                      size_t* received)
 {
     if (!sock || !buffer || buffer_size == 0)
-        return NET_ERROR_INVALID_PARAM;
+       return convert_status_from_linux(-EINVAL, sock);
 
     PLINUX_SOCKET_IMPL impl = (PLINUX_SOCKET_IMPL)sock->context;
     if (!impl)
-        return NET_ERROR_INVALID_STATE;
+        return convert_status_from_linux(-EINVAL, sock);
 
     // Буфер для приёма данных
     struct kvec kv;
@@ -374,7 +378,7 @@ net_error_t linux_net_socket_receive(net_socket_t* sock, void* buffer, size_t bu
 
         status = kernel_recvmsg(impl->kernel_socket, &msg, &kv, 1 /* Size of input s/g array */, buffer_size, 0);
         if (status < 0)
-            return convert_status_from_linux(status);
+            return convert_status_from_linux(status, sock);
     }
     // UDP
     else
@@ -401,7 +405,7 @@ net_error_t linux_net_socket_receive(net_socket_t* sock, void* buffer, size_t bu
 
         status = kernel_recvmsg(impl->kernel_socket, &msg, &kv, 1 /* Size of input s/g array */, buffer_size, 0);
         if (status < 0)
-            return convert_status_from_linux(status);
+            return convert_status_from_linux(status, sock);
 
         if (from_addr)
         {
@@ -424,47 +428,60 @@ net_error_t linux_net_socket_receive(net_socket_t* sock, void* buffer, size_t bu
     if (received)
         *received = (size_t)status;
 
+    convert_status_from_linux(0, sock);
     return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_get_address(net_socket_t* sock, net_address_t* addr)
 {
-    sock = 0;
-    addr = 0;
-    return 0;
+    if (!sock || !addr)
+        return NET_ERROR_INVALID_PARAM;
+
+    *addr = sock->addr;
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_get_remote_address(net_socket_t* sock, net_address_t* addr)
 {
-    sock = 0;
-    addr = 0;
-    return 0;
+    if (!sock || !addr)
+        return NET_ERROR_INVALID_PARAM;
+
+    *addr = sock->remote_addr;
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_get_type(net_socket_t* sock, net_socket_type_t* type)
 {
-    sock = 0;
-    type = 0;
-    return 0;
+    if (!sock || !type)
+        return NET_ERROR_INVALID_PARAM;
+
+    *type = sock->type;
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_get_protocol(net_socket_t* sock, net_protocol_t* protocol)
 {
-    sock = 0;
-    protocol = 0;
-    return 0;
+    if (!sock || !protocol)
+        return NET_ERROR_INVALID_PARAM;
+
+    *protocol = sock->protocol;
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_last_error(net_socket_t* sock, net_error_t* error)
 {
-    sock = 0;
-    error = 0;
-    return 0;
+    if (!sock || !error)
+        return NET_ERROR_INVALID_PARAM;
+
+    *error = sock->error;
+    return NET_SUCCESS;
 }
 
 net_error_t linux_net_socket_last_platform_error(net_socket_t* sock, const void** platform_error)
 {
-    sock = 0;
-    platform_error = 0;
-    return 0;
+    if (!sock || !platform_error)
+        return NET_ERROR_INVALID_PARAM;
+
+    *platform_error = (const void*)sock->last_error;
+    return NET_SUCCESS;
 }
