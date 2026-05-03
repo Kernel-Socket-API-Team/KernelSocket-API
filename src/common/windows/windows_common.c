@@ -1,6 +1,11 @@
 #include "windows_common.h"
 
-WSK_CONTEXT g_WskContext = {0};
+WSK_CONTEXT g_WskContext = {
+    .Registration = {0},
+    .ProviderNpi = {0},
+    .Initialized = FALSE,
+    .Registered = FALSE
+};
 
 WSK_CLIENT_DISPATCH WskAppDispatch = {
     MAKE_WSK_VERSION(1, 0), // Версия WSK 1.0

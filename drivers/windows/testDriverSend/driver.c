@@ -19,20 +19,20 @@ static VOID TestThread(PVOID Context)
         goto exit;
     }
 
-    err = net_socket_create(NET_AF_INET4, NET_PROTO_UDP, NET_SOCK_TYPE_UDP, &g_Socket);
+    err = net_socket_create(NET_AF_INET6, NET_PROTO_UDP, NET_SOCK_TYPE_UDP, &g_Socket);
     if (err != NET_SUCCESS)
     {
         DbgPrint("[TEST] Create failed: %d\n", err);
         goto cleanup;
     }
 
-    err = net_address_parse("192.168.68.1", NET_AF_INET4, &addr);
+    err = net_address_parse("fd00:dead:beef:2::1", NET_AF_INET6, &addr);
     if (err != NET_SUCCESS)
     {
         DbgPrint("[TEST] Parse failed: %d\n", err);
         goto close;
     }
-    net_htons(9003, &addr.port);
+    net_htons(9004, &addr.port);
 
     DbgPrint("[TEST] Connecting...\n");
     err = net_socket_connect(g_Socket, &addr);

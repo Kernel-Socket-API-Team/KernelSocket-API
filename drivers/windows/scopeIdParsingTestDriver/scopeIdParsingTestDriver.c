@@ -26,9 +26,10 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 
     // Тест IPv4 (scope_id должен игнорироваться)
     DbgPrint("\n[Test 1] IPv4 with scope (should ignore %%)\n");
-    err = net_address_parse("192.168.1.100%ens33", NET_AF_INET4, &addr);
+    err = net_address_parse("192.168.1.100%ens33:4444", NET_AF_INET4, &addr);
     DbgPrint("  Parse result: %d (expected -3)\n", err);
     DbgPrint("  IPv4 address: 0x%08X (expected 0x6401A8C0)\n", addr.addr.ipv4);
+    DbgPrint("  Port: 0x%08X (expected 0x6401A8C0)\n", addr.port);
     DbgPrint("  scope_id: %u (expected 0)\n", addr.scope_id);
 
     // Тест IPv6 без scope_id

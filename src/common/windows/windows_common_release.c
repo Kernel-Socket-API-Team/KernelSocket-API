@@ -104,25 +104,77 @@ net_error_t windows_net_address_parse(const char* str, net_family_t ip_family, n
         return NET_ERROR_INVALID_PARAM;
 
     NTSTATUS status;
+    char ip_str[256] = {0};
+    char port_str[16] = {0};
+    const char* colon_pos = NULL;
 
     if (ip_family == NET_AF_INET4)
     {
+        // Ищем порт
+        colon_pos = strrchr(str, ':');
+        
+        if (colon_pos) {
+            // Копируем IP часть (до порта)
+            size_t ip_len = colon_pos - str;
+            if (ip_len >= sizeof(ip_str))
+                return NET_ERROR_INVALID_PARAM;
+            memcpy(ip_str, str, ip_len);
+            ip_str[ip_len] = '\0';
+            
+            // Копируем порт
+            size_t port_len = 0;
+            const char* p = colon_pos + 1;
+            while (*p && port_len < sizeof(port_str) - 1) {
+                port_str[port_len++] = *p++;
+            }
+            port_str[port_len] = '\0';
+        } else {
+            // Нет порта
+            size_t i = 0;
+            while (str[i] && i < sizeof(ip_str) - 1) {
+                ip_str[i] = str[i];
+                i++;
+            }
+            ip_str[i] = '\0';
+        }
+        
+        // Удаляем scope_id из IPv4 если есть
+        char* percent = strchr(ip_str, '%');
+        if (percent) {
+            *percent = '\0';
+        }
+        
+        // Парсим IPv4 адрес
         const char* terminator = NULL;
         IN_ADDR ip4;
-
-        status = RtlIpv4StringToAddress(str, FALSE, &terminator, &ip4);
-
+        status = RtlIpv4StringToAddressA(ip_str, FALSE, &terminator, &ip4);
+        
         if (NT_SUCCESS(status))
         {
             addr->family = ip_family;
             addr->addr.ipv4 = ip4.S_un.S_addr;
-            addr->scope_id = 0; // IPv4 не использует scope_id
+            addr->scope_id = 0;
+            
+            // Парсим порт
+            if (colon_pos && port_str[0]) {
+                ULONG port = 0;
+                for (size_t i = 0; port_str[i]; i++) {
+                    if (port_str[i] >= '0' && port_str[i] <= '9') {
+                        port = port * 10 + (port_str[i] - '0');
+                    } else {
+                        return NET_ERROR_INVALID_PARAM;
+                    }
+                }
+                if (port > 65535)
+                    return NET_ERROR_INVALID_PARAM;
+                addr->port = RtlUshortByteSwap((USHORT)port);
+            }
         }
     }
     else if (ip_family == NET_AF_INET6)
     {
         IN6_ADDR ip6;
-        ULONG scope_id = 0; // Сохранится scope_id из строки
+        ULONG scope_id = 0;
         USHORT port = 0;
 
         char normalized[256];
@@ -131,7 +183,6 @@ net_error_t windows_net_address_parse(const char* str, net_family_t ip_family, n
         if (!NT_SUCCESS(status))
             return convert_status_from_windows(status, NULL);
 
-        // Формат строки может быть: "fe80::1234" или "fe80::1234%13" или "fe80::1234%ens33"
         status = RtlIpv6StringToAddressExA(normalized, &ip6, &scope_id, &port);
         if (NT_SUCCESS(status))
         {
@@ -139,7 +190,7 @@ net_error_t windows_net_address_parse(const char* str, net_family_t ip_family, n
             memcpy(addr->addr.ipv6, ip6.u.Byte, 16);
             addr->scope_id = scope_id;
             if (port != 0)
-                addr->port = RtlUshortByteSwap((uint16_t)port);
+                addr->port = RtlUshortByteSwap(port);
         }
     }
     else
