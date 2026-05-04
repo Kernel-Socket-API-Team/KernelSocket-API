@@ -42,7 +42,7 @@ typedef struct net_address {
     char hostname[256];          // Человекочитаемое имя (опционально)
 } net_address_t;
 
-#define NET_ADDRSTRLEN 54               // Максимальная длина строкового адреса
+#define NET_ADDRSTRLEN 64               // Максимальная длина строкового адреса
 #define NET_WAIT_INFINITE ((size_t)-1)  // Бесконечное ожидание
 ```
 

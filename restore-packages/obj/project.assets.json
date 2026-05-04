@@ -8801,20 +8801,20 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\ecoside\\KernelSocket-API\\packages": {}
+    "/home/igorjob/programming/c/KernelSocket-API/packages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\ecoside\\KernelSocket-API\\restore-packages\\RestorePackages.csproj",
+      "projectUniqueName": "/home/igorjob/programming/c/KernelSocket-API/restore-packages/RestorePackages.csproj",
       "projectName": "RestorePackages",
-      "projectPath": "C:\\Users\\ecoside\\KernelSocket-API\\restore-packages\\RestorePackages.csproj",
-      "packagesPath": "C:\\Users\\ecoside\\KernelSocket-API\\packages",
-      "outputPath": "C:\\Users\\ecoside\\KernelSocket-API\\restore-packages\\obj\\",
+      "projectPath": "/home/igorjob/programming/c/KernelSocket-API/restore-packages/RestorePackages.csproj",
+      "packagesPath": "/home/igorjob/programming/c/KernelSocket-API/packages",
+      "outputPath": "/home/igorjob/programming/c/KernelSocket-API/restore-packages/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\ecoside\\KernelSocket-API\\NuGet.Config",
-        "C:\\Users\\ecoside\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "/home/igorjob/programming/c/KernelSocket-API/NuGet.config",
+        "/home/igorjob/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "native"
@@ -8832,13 +8832,7 @@
         "warnAsError": [
           "NU1605"
         ]
-      },
-      "restoreAuditProperties": {
-        "enableAudit": "true",
-        "auditLevel": "low",
-        "auditMode": "direct"
-      },
-      "SdkAnalysisLevel": "10.0.200"
+      }
     },
     "frameworks": {
       "native": {
@@ -8857,7 +8851,7 @@
             "version": "[10.0.26100.6584, )"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.125/RuntimeIdentifierGraph.json"
       }
     }
   }
