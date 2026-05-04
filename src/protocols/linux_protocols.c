@@ -161,6 +161,20 @@ net_error_t linux_net_socket_connect(net_socket_t* sock, const net_address_t* ad
     if (!impl || !impl->kernel_socket)
         return convert_status_from_linux(-EINVAL, sock);
 
+    if (sock->type == NET_SOCK_TYPE_TCP_LISTEN)
+        return convert_status_from_linux(-EINVAL, sock);
+
+    // Сохраняем адрес
+    sock->remote_addr = *addr;
+
+    // Для UDP только сохраняем адрес, без connect
+    if (sock->type == NET_SOCK_TYPE_UDP)
+    {
+        convert_status_from_linux(0, sock);
+        return NET_SUCCESS;
+    }
+
+    // Для TCP выполняем connect
     int status;
 
     if (addr->family == NET_AF_INET4)
@@ -193,8 +207,6 @@ net_error_t linux_net_socket_connect(net_socket_t* sock, const net_address_t* ad
     {
         return convert_status_from_linux(status, sock);
     }
-
-    sock->remote_addr = *addr;
 
     convert_status_from_linux(0, sock);
     return NET_SUCCESS;
