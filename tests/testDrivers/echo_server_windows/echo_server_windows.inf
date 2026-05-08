@@ -1,0 +1,62 @@
+;
+; echo_server_windows.inf
+;
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = System ; TODO: specify appropriate Class
+ClassGuid   = {4d36e97d-e325-11ce-bfc1-08002be10318} ; TODO: specify appropriate ClassGuid
+Provider    = %ManufacturerName%
+CatalogFile = echo_server_windows.cat
+DriverVer   = ; TODO: set DriverVer in stampinf property pages
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 13
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+echo_server_windows.sys = 1,,
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName% = Standard,NT$ARCH$.10.0...16299 ; %13% support introduced in build 16299
+
+[Standard.NT$ARCH$.10.0...16299]
+%echo_server_windows.DeviceDesc% = echo_server_windows_Device, Root\echo_server_windows ; TODO: edit hw-id
+
+[echo_server_windows_Device.NT]
+CopyFiles = File_Copy
+
+[File_Copy]
+echo_server_windows.sys
+
+;-------------- Service installation
+[echo_server_windows_Device.NT.Services]
+AddService = echo_server_windows,%SPSVCINST_ASSOCSERVICE%, echo_server_windows_Service_Inst
+
+; -------------- echo_server_windows driver install sections
+[echo_server_windows_Service_Inst]
+DisplayName    = %echo_server_windows.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %13%\echo_server_windows.sys
+
+[echo_server_windows_Device.NT.Wdf]
+KmdfService = echo_server_windows, echo_server_windows_wdfsect
+
+[echo_server_windows_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+[Strings]
+SPSVCINST_ASSOCSERVICE = 0x00000002
+ManufacturerName = "<Your manufacturer name>" ;TODO: Replace with your manufacturer name
+DiskName = "echo_server_windows Installation Disk"
+echo_server_windows.DeviceDesc = "echo_server_windows Device"
+echo_server_windows.SVCDESC = "echo_server_windows Service"
