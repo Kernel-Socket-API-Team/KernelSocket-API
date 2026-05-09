@@ -166,7 +166,7 @@ VOID NetworkWorkerThread(PVOID Context) {
     // Работа с сокетами
     // ...
   } else if (err == NET_ERROR_TIMEOUT) {
-    // обработка таймаута
+    // Обработка таймаута
     // ...
   }
 
@@ -213,4 +213,72 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject,
 
 ### Linux
 ```c
+#include <ksockapi.h>
+#include <linux/kthread.h>
+#include <linux/delay.h>
+
+static struct task_struct *g_WorkerThread = NULL;
+
+static int NetworkWorkerThread(void *data)
+{
+    net_error_t err;
+    
+    err = net_is_ready();
+    
+    if (err == NET_ERROR_NOT_REGISTER) {
+        return -EINVAL;
+    }
+    
+    err = net_activate(NET_WAIT_INFINITE);
+    
+    if (err == NET_SUCCESS) {        
+        // Работа с сокетами
+        // ...
+    } else {
+        // Обработка ошибки
+        // ...
+    }
+    
+    return 0;
+}
+
+static int __init network_driver_init(void)
+{
+    net_error_t err;
+    
+    // Регистрация
+    err = net_register();
+    if (err != NET_SUCCESS) {
+        return -EIO;
+    }
+    
+    // Создание рабочего потока
+    g_WorkerThread = kthread_run(NetworkWorkerThread, NULL, "net_worker");
+    if (IS_ERR(g_WorkerThread)) {
+        err = PTR_ERR(g_WorkerThread);
+        net_cleanup();
+        return err;
+    }
+    
+    return 0;
+}
+
+static void __exit network_driver_exit(void)
+{
+    // Остановка рабочего потока
+    if (g_WorkerThread) {
+        kthread_stop(g_WorkerThread);
+        g_WorkerThread = NULL;
+    }
+    
+    // Очистка ресурсов
+    net_cleanup();
+}
+
+module_init(network_driver_init);
+module_exit(network_driver_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("Network socket wrapper for Linux kernel (with trivial init)");
+MODULE_AUTHOR("Your Name");
 ```

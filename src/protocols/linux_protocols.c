@@ -161,6 +161,20 @@ net_error_t linux_net_socket_connect(net_socket_t* sock, const net_address_t* ad
     if (!impl || !impl->kernel_socket)
         return convert_status_from_linux(-EINVAL, sock);
 
+    if (sock->type == NET_SOCK_TYPE_TCP_LISTEN)
+        return convert_status_from_linux(-EINVAL, sock);
+
+    // Сохраняем адрес
+    sock->remote_addr = *addr;
+
+    // Для UDP только сохраняем адрес, без connect
+    if (sock->type == NET_SOCK_TYPE_UDP)
+    {
+        convert_status_from_linux(0, sock);
+        return NET_SUCCESS;
+    }
+
+    // Для TCP выполняем connect
     int status;
 
     if (addr->family == NET_AF_INET4)
@@ -193,8 +207,6 @@ net_error_t linux_net_socket_connect(net_socket_t* sock, const net_address_t* ad
     {
         return convert_status_from_linux(status, sock);
     }
-
-    sock->remote_addr = *addr;
 
     convert_status_from_linux(0, sock);
     return NET_SUCCESS;
@@ -312,29 +324,28 @@ net_error_t linux_net_socket_accept(net_socket_t* server, net_socket_t** client_
     }
     memset(client_impl, 0, sizeof(LINUX_SOCKET_IMPL));
 
-    // Хранение локального адреса клиента
-    struct sockaddr_storage local_addr;
-    memset(&local_addr, 0, sizeof(struct sockaddr_storage));
+    // Получаем удалённый адрес клиента (откуда пришло подключение)
+    struct sockaddr_storage remote_addr;
+    memset(&remote_addr, 0, sizeof(struct sockaddr_storage));
 
-    // Получаем локальный адрес клиента
-    status = kernel_getpeername(new_socket, (struct sockaddr*)&local_addr);
+    status = kernel_getpeername(new_socket, (struct sockaddr*)&remote_addr);
     if (status >= 0)
     {
-        if (local_addr.ss_family == AF_INET)
+        if (remote_addr.ss_family == AF_INET)
         {
-            struct sockaddr_in* ip4_addr = (struct sockaddr_in*)&local_addr;
-            client->addr.family = NET_AF_INET4;
-            client->addr.port = ip4_addr->sin_port;
-            client->addr.addr.ipv4 = ip4_addr->sin_addr.s_addr;
-            client->addr.scope_id = 0;
+            struct sockaddr_in* ip4_addr = (struct sockaddr_in*)&remote_addr;
+            client->remote_addr.family = NET_AF_INET4;
+            client->remote_addr.port = ip4_addr->sin_port;
+            client->remote_addr.addr.ipv4 = ip4_addr->sin_addr.s_addr;
+            client->remote_addr.scope_id = 0;
         }
-        else if (local_addr.ss_family == AF_INET6)
+        else if (remote_addr.ss_family == AF_INET6)
         {
-            struct sockaddr_in6* ip6_addr = (struct sockaddr_in6*)&local_addr;
-            client->addr.family = NET_AF_INET6;
-            client->addr.port = ip6_addr->sin6_port;
-            memcpy(client->addr.addr.ipv6, ip6_addr->sin6_addr.in6_u.u6_addr8, 16);
-            client->addr.scope_id = ip6_addr->sin6_scope_id;
+            struct sockaddr_in6* ip6_addr = (struct sockaddr_in6*)&remote_addr;
+            client->remote_addr.family = NET_AF_INET6;
+            client->remote_addr.port = ip6_addr->sin6_port;
+            memcpy(client->remote_addr.addr.ipv6, ip6_addr->sin6_addr.in6_u.u6_addr8, 16);
+            client->remote_addr.scope_id = ip6_addr->sin6_scope_id;
         }
     }
 
@@ -379,6 +390,11 @@ net_error_t linux_net_socket_receive(net_socket_t* sock, void* buffer, size_t bu
         status = kernel_recvmsg(impl->kernel_socket, &msg, &kv, 1 /* Size of input s/g array */, buffer_size, 0);
         if (status < 0)
             return convert_status_from_linux(status, sock);
+
+        if (from_addr)
+        {
+            *from_addr = sock->remote_addr;
+        }
     }
     // UDP
     else

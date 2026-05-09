@@ -190,7 +190,7 @@ net_error_t windows_net_address_parse(const char* str, net_family_t ip_family, n
             memcpy(addr->addr.ipv6, ip6.u.Byte, 16);
             addr->scope_id = scope_id;
             if (port != 0)
-                addr->port = RtlUshortByteSwap(port);
+                addr->port = port;  // Уже в network нотации
         }
     }
     else

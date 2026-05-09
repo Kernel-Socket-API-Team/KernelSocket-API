@@ -455,8 +455,6 @@ net_error_t windows_net_socket_send(net_socket_t *sock, const void *data,
     status =
         ((PWSK_PROVIDER_DATAGRAM_DISPATCH)impl->wsk_socket->Dispatch)
             ->WskSendTo(impl->wsk_socket, &wsk_buf, 0, pDest, 0, NULL, irp);
-
-    DbgPrint("[API] WskSendTo returned: 0x%08X\n", status);
   } else {
     IoFreeIrp(irp);
     IoFreeMdl(wsk_buf.Mdl);
@@ -558,7 +556,7 @@ net_error_t windows_net_socket_accept(net_socket_t* server, net_socket_t** clien
         IoSetCompletionRoutine(irp_addr, wsk_completion, &event_addr, TRUE, TRUE, TRUE);
 
         NTSTATUS addr_status = ((PWSK_PROVIDER_CONNECTION_DISPATCH)newClient->Dispatch)
-                                   ->WskGetRemoteAddress(newClient, (PSOCKADDR)&remote_addr, irp_addr);
+                                ->WskGetRemoteAddress(newClient, (PSOCKADDR)&remote_addr, irp_addr);
 
         if (addr_status == STATUS_PENDING)
         {
@@ -572,28 +570,30 @@ net_error_t windows_net_socket_accept(net_socket_t* server, net_socket_t** clien
         {
             if (remote_addr.ss_family == AF_INET)
             {
-                // IPv4
+                // IPv4 - сохраняем в remote_addr
                 PSOCKADDR_IN ipv4 = (PSOCKADDR_IN)&remote_addr;
-                client->addr.family = NET_AF_INET4;
-                client->addr.port = ipv4->sin_port;
-                client->addr.addr.ipv4 = ipv4->sin_addr.s_addr;
+                client->remote_addr.family = NET_AF_INET4;
+                client->remote_addr.port = ipv4->sin_port;
+                client->remote_addr.addr.ipv4 = ipv4->sin_addr.s_addr;
+                client->remote_addr.scope_id = 0;
             }
             else if (remote_addr.ss_family == AF_INET6)
             {
-                // IPv6
+                // IPv6 - сохраняем в remote_addr
                 PSOCKADDR_IN6 ipv6 = (PSOCKADDR_IN6)&remote_addr;
-                client->addr.family = NET_AF_INET6;
-                client->addr.port = ipv6->sin6_port;
-                RtlCopyMemory(client->addr.addr.ipv6, &ipv6->sin6_addr, 16);
-                client->addr.scope_id = ipv6->sin6_scope_id;
+                client->remote_addr.family = NET_AF_INET6;
+                client->remote_addr.port = ipv6->sin6_port;
+                RtlCopyMemory(client->remote_addr.addr.ipv6, &ipv6->sin6_addr, 16);
+                client->remote_addr.scope_id = ipv6->sin6_scope_id;
             }
         }
         else
         {
             // Заполняем нулями
-            client->addr.family = NET_AF_INET4;
-            client->addr.addr.ipv4 = 0;
-            client->addr.port = 0;
+            client->remote_addr.family = NET_AF_INET4;
+            client->remote_addr.addr.ipv4 = 0;
+            client->remote_addr.port = 0;
+            client->remote_addr.scope_id = 0;
         }
     }
 
@@ -673,7 +673,7 @@ net_error_t windows_net_socket_receive(net_socket_t* sock, void* buffer, size_t 
                      ->WskReceive(impl->wsk_socket, &wsk_buf, 0, irp);
 
         if (from_addr)
-            *from_addr = sock->addr; // копируем сохраненный адрес
+            *from_addr = sock->remote_addr; // копируем сохраненный адрес
     }
     // UDP
     else
