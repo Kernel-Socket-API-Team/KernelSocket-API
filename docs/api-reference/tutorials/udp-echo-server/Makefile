@@ -10,11 +10,10 @@ TMP_DIR := $(CUR_DIR)/../tmp_module
 
 obj-m += udp_echo_server.o
 
-udp_echo_server-y := udp-echo-server.o ../../../../compileLibraryForLinux/ksockapi_sources.o 
+udp_echo_server-y := udp-echo-server.o ../../../../lib/knet.o
 
 # Включение заголовков
-ccflags-y += -I../../../../KernelSocket-API/include 
-ccflags-y += -I../../../../KernelSocket-API/compileLibraryForLinux/src
+ccflags-y += -I../../../../KernelSocket-API/include
 
 all:
 	$(MAKE) -C $(KDIR) M="$(CUR_DIR)" modules

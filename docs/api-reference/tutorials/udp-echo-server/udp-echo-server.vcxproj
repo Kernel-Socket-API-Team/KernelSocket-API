@@ -88,7 +88,7 @@
     </DriverSign>
     <Link />
     <Link>
-      <AdditionalDependencies>../../../../compileLibraryForWindows/x64/Debug/compileLibraryForWindows.lib;netio.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>../../../../lib/knet.lib;netio.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
