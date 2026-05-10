@@ -133,7 +133,6 @@ net_error_t windows_net_socket_create(net_family_t family, net_protocol_t protoc
     sock->protocol = protocol;
     sock->type = type;
     
-
     *socketOut = sock;
 
     return NET_SUCCESS;
@@ -305,16 +304,24 @@ net_error_t windows_net_socket_connect(net_socket_t *sock,
       need_bind = TRUE;
   }
 
-  if (need_bind) {
-    net_address_t any_addr;
-    RtlZeroMemory(&any_addr, sizeof(any_addr));
-    any_addr.family = sock->addr.family;
-    any_addr.port = 0;
+    if (need_bind) {
+        net_address_t any_addr;
+        RtlZeroMemory(&any_addr, sizeof(any_addr));
 
-    net_error_t be = windows_net_socket_bind(sock, &any_addr);
-    if (be != NET_SUCCESS)
-      return be;
-  }
+        any_addr.family = sock->addr.family;
+        any_addr.port = 0;
+
+        if (any_addr.family == NET_AF_INET4) {
+            any_addr.addr.ipv4 = INADDR_ANY;
+        } else {
+            RtlZeroMemory(any_addr.addr.ipv6, 16);
+        }
+
+        net_error_t be = windows_net_socket_bind(sock, &any_addr);
+
+        if (sock->protocol == NET_PROTO_TCP && be != NET_SUCCESS)
+            return be;
+    }
 
   // Готовим удалённый адрес
   SOCKADDR_STORAGE remote_storage;

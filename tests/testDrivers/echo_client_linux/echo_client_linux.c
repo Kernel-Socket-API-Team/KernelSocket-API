@@ -3,15 +3,10 @@
 #include <linux/delay.h>
 #include <linux/jiffies.h>
 
-#define SERVER_PORT_TCP 9001
-#define SERVER_PORT_UDP 9003
+#define SERVER_PORT_TCP 4444
+#define SERVER_PORT_UDP 4445
 #define BUFFER_SIZE 1024
 #define WAIT_TIMEOUT_MS 5000
-
-// Параметры модуля
-static char* server_ip = "192.168.68.1";
-module_param(server_ip, charp, 0644);
-MODULE_PARM_DESC(server_ip, "Server IP address");
 
 static bool g_Running = true;
 static struct task_struct* g_WorkerThreadClient = NULL;
@@ -27,7 +22,7 @@ static net_error_t SendUdpMessage(const char* ip, uint16_t port, const char* mes
     printk(KERN_INFO "[UDP Client] Sending to %s:%d: %s\n", ip, port, message);
 
     // Создание UDP сокета
-    err = net_socket_create(NET_AF_INET4, NET_PROTO_UDP, NET_SOCK_TYPE_UDP, &sock);
+    err = net_socket_create(NET_AF_INET6, NET_PROTO_UDP, NET_SOCK_TYPE_UDP, &sock);
     if (err != NET_SUCCESS)
     {
         printk(KERN_ERR "[UDP Client] Socket creation failed: %d\n", err);
@@ -35,7 +30,7 @@ static net_error_t SendUdpMessage(const char* ip, uint16_t port, const char* mes
     }
 
     // Парсинг адреса сервера
-    err = net_address_parse(ip, NET_AF_INET4, &server_addr);
+    err = net_address_parse(ip, NET_AF_INET6, &server_addr);
     if (err != NET_SUCCESS)
     {
         printk(KERN_ERR "[UDP Client] Address parse failed: %d\n", err);
@@ -153,19 +148,25 @@ static int ClientThread(void* Context)
         printk(KERN_ERR "[Client] Activation failed: %d\n", err);
         goto exit;
     }
+    
+    const char* server_udp_ip = "fe80::a921:2d1f:61fb:8942%2";
 
-    printk(KERN_INFO "[Client] Starting test sequence to server: %s\n", server_ip);
+    printk(KERN_INFO "[Client] Starting test sequence to udp server: %s\n", server_udp_ip);
 
     // Отправка UDP сообщения
-    err = SendUdpMessage(server_ip, SERVER_PORT_UDP, "Hello from UDP client!");
+    err = SendUdpMessage(server_udp_ip, SERVER_PORT_UDP, "Hello from UDP client!");
     if (err != NET_SUCCESS)
         printk(KERN_ERR "[Client] UDP send failed: %d\n", err);
 
     // Небольшая задержка между отправками
     msleep(500);
 
+    const char* server_tcp_ip = "192.168.68.128";
+
+    printk(KERN_INFO "[Client] Starting test sequence to tcp server: %s\n", server_tcp_ip);
+
     // Отправка TCP сообщения
-    err = SendTcpMessage(server_ip, SERVER_PORT_TCP, "Hello from TCP client!");
+    err = SendTcpMessage(server_tcp_ip, SERVER_PORT_TCP, "Hello from TCP client!");
     if (err != NET_SUCCESS)
         printk(KERN_ERR "[Client] TCP send failed: %d\n", err);
 
@@ -206,7 +207,6 @@ static int __init echo_client_init(void)
 
     printk(KERN_INFO "[Client] Module loaded - will send UDP to port %d and TCP to port %d\n", 
            SERVER_PORT_UDP, SERVER_PORT_TCP);
-    printk(KERN_INFO "[Client] Target server: %s\n", server_ip);
 
     return 0;
 }
@@ -217,4 +217,3 @@ module_exit(echo_client_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Your Name");
 MODULE_DESCRIPTION("TCP/UDP Echo Client using Kernel Socket API");
-MODULE_PARM_DESC(server_ip, "Server IP address (default: 127.0.0.1)");

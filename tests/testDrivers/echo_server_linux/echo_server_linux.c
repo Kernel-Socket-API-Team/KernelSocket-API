@@ -25,11 +25,11 @@ static int ServerThreadTCP(void* Context)
     if (err != NET_SUCCESS)
         goto exit;
 
-    err = net_socket_create(NET_AF_INET4, NET_PROTO_TCP, NET_SOCK_TYPE_TCP_LISTEN, &g_ServerSockTCP);
+    err = net_socket_create(NET_AF_INET6, NET_PROTO_TCP, NET_SOCK_TYPE_TCP_LISTEN, &g_ServerSockTCP);
     if (err != NET_SUCCESS)
         goto exit;
 
-    err = net_address_parse("0.0.0.0", NET_AF_INET4, &addr);
+    err = net_address_parse("::", NET_AF_INET6, &addr);
     net_htons(PORT_TCP, &addr.port);
     if (err != NET_SUCCESS)
         goto close_server;

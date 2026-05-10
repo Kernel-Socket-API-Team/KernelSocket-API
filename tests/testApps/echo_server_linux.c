@@ -134,18 +134,21 @@ int main(int argc, char* argv[])
             printf("[Client] Disconnected\n---\n");
         }
     }
-    else
+   else
     {
         // UDP сервер
         printf("Waiting for datagrams...\n\n");
 
         char buffer[BUFFER_SIZE];
-        struct sockaddr_storage client_addr;
-        socklen_t addr_len = sizeof(client_addr);
 
         while (1)
         {
-            int bytes = recvfrom(sock, buffer, BUFFER_SIZE - 1, 0, (struct sockaddr*)&client_addr, &addr_len);
+            struct sockaddr_storage client_addr;
+            memset(&client_addr, 0, sizeof(client_addr));
+
+            socklen_t addr_len = sizeof(client_addr);
+
+            int bytes = recvfrom(sock, buffer, BUFFER_SIZE - 1, 0, (struct sockaddr*)&client_addr,&addr_len);
 
             if (bytes < 0)
             {
@@ -155,24 +158,48 @@ int main(int argc, char* argv[])
 
             buffer[bytes] = '\0';
 
-            // Вывод адреса клиента
-            char client_ip[INET6_ADDRSTRLEN];
+            // IPv6
             if (client_addr.ss_family == AF_INET6)
             {
-                struct sockaddr_in6* addr6 = (struct sockaddr_in6*)&client_addr;
+                struct sockaddr_in6* addr6 =
+                    (struct sockaddr_in6*)&client_addr;
+
+                char client_ip[INET6_ADDRSTRLEN];
+
                 inet_ntop(AF_INET6, &addr6->sin6_addr, client_ip, sizeof(client_ip));
-                printf("[Client] IPv6: [%s]:%d scope_id=%u >> %s\n", client_ip, ntohs(addr6->sin6_port),
-                       addr6->sin6_scope_id, buffer);
+
+                printf("[Client] IPv6: [%s]:%d scope_id=%u >> %s\n", client_ip, 
+                    ntohs(addr6->sin6_port), addr6->sin6_scope_id, buffer);
+
+                if (IN6_IS_ADDR_LINKLOCAL(&addr6->sin6_addr))
+                {
+                    printf("[Debug] Link-local IPv6 detected, scope_id=%u\n", 
+                        addr6->sin6_scope_id);
+                }
             }
             else
             {
-                struct sockaddr_in* addr4 = (struct sockaddr_in*)&client_addr;
+                struct sockaddr_in* addr4 =
+                    (struct sockaddr_in*)&client_addr;
+
+                char client_ip[INET_ADDRSTRLEN];
+
                 inet_ntop(AF_INET, &addr4->sin_addr, client_ip, sizeof(client_ip));
+
                 printf("[Client] IPv4: %s:%d >> %s\n", client_ip, ntohs(addr4->sin_port), buffer);
             }
 
-            // Отправка обратно
-            sendto(sock, buffer, bytes, 0, (struct sockaddr*)&client_addr, addr_len);
+            // Echo back
+            int sent = sendto(sock, buffer, bytes, 0, (struct sockaddr*)&client_addr, addr_len);
+
+            if (sent < 0)
+            {
+                perror("sendto failed");
+            }
+            else
+            {
+                printf("  Echoed: %s\n", buffer);
+            }
         }
     }
 
