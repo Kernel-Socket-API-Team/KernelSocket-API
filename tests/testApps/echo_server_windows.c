@@ -182,7 +182,18 @@ int main(int argc, char* argv[])
             }
 
             // Отправка обратно
-            sendto(sock, buffer, bytes, 0, (struct sockaddr*)&client_addr, addr_len);
+            if (client_addr.ss_family == AF_INET6) {
+                struct sockaddr_in6* addr6 = (struct sockaddr_in6*)&client_addr;
+                int result = setsockopt(sock, IPPROTO_IPV6, IPV6_UNICAST_IF, 
+                                    (char*)&addr6->sin6_scope_id, sizeof(addr6->sin6_scope_id));
+            }
+
+            int send_result = sendto(sock, buffer, bytes, 0, (struct sockaddr*)&client_addr, addr_len);
+            if (send_result == SOCKET_ERROR) {
+                printf("sendto failed: %d\n", WSAGetLastError());
+            } else {
+                printf("  Echoed: %s\n", buffer);
+            }
         }
     }
 

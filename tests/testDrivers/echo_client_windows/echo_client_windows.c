@@ -1,7 +1,7 @@
 #include <ksockapi.h>
 
-#define SERVER_PORT_TCP 9001
-#define SERVER_PORT_UDP 9003
+#define SERVER_PORT_TCP 4444
+#define SERVER_PORT_UDP 4445
 #define BUFFER_SIZE 1024
 #define WAIT_TIMEOUT_MS 5000
 
@@ -57,7 +57,7 @@ net_error_t SendUdpMessage(const char* server_ip, uint16_t port, const char* mes
 
     DbgPrint("[UDP Client] Sent %zu bytes\n", sent);
 
-    // Получение ответа (опционально)
+    // Получение ответа
     char buffer[BUFFER_SIZE];
     size_t received;
     err = net_socket_receive(sock, buffer, BUFFER_SIZE - 1, NULL, &received);
@@ -83,7 +83,7 @@ net_error_t SendTcpMessage(const char* server_ip, uint16_t port, const char* mes
     DbgPrint("[TCP Client] Connecting to %s:%d\n", server_ip, port);
 
     // Создание TCP сокета
-    err = net_socket_create(NET_AF_INET4, NET_PROTO_TCP, NET_SOCK_TYPE_TCP_CONNECTION, &sock);
+    err = net_socket_create(NET_AF_INET6, NET_PROTO_TCP, NET_SOCK_TYPE_TCP_CONNECTION, &sock);
     if (err != NET_SUCCESS)
     {
         DbgPrint("[TCP Client] Socket creation failed: %d\n", err);
@@ -91,7 +91,7 @@ net_error_t SendTcpMessage(const char* server_ip, uint16_t port, const char* mes
     }
 
     // Парсинг адреса сервера
-    err = net_address_parse(server_ip, NET_AF_INET4, &server_addr);
+    err = net_address_parse(server_ip, NET_AF_INET6, &server_addr);
     if (err != NET_SUCCESS)
     {
         DbgPrint("[TCP Client] Address parse failed: %d\n", err);
@@ -151,7 +151,9 @@ VOID ClientThread(PVOID Context)
     DbgPrint("[Client] Starting test sequence...\n");
 
     // Отправка UDP сообщения
-    err = SendUdpMessage("192.168.68.1", SERVER_PORT_UDP, "Hello from UDP client!");
+    //err = SendUdpMessage("fe80::4e3a:8d0c:b712:d139%9", SERVER_PORT_UDP, "Hello from UDP client!"); // ТЕСТ 4
+    //err = SendUdpMessage("fe80::70f:68b4:f07f:e3ef%9", SERVER_PORT_UDP, "Hello from UDP client!"); // ТЕСТ 8
+    err = SendUdpMessage("192.168.68.129", SERVER_PORT_UDP, "Hello from UDP client!"); // ТЕСТ 12
     if (err != NET_SUCCESS)
         DbgPrint("[Client] UDP send failed: %d\n", err);
 
@@ -161,7 +163,9 @@ VOID ClientThread(PVOID Context)
     KeDelayExecutionThread(KernelMode, FALSE, &delay);
 
     // Отправка TCP сообщения
-    err = SendTcpMessage("192.168.68.1", SERVER_PORT_TCP, "Hello from TCP client!");
+    //err = SendTcpMessage("192.168.68.1", SERVER_PORT_TCP, "Hello from TCP client!"); // ТЕСТ 3
+    //err = SendTcpMessage("192.168.68.129", SERVER_PORT_TCP, "Hello from TCP client!"); // ТЕСТ 7
+    err = SendTcpMessage("fe80::70f:68b4:f07f:e3ef%9", SERVER_PORT_TCP, "Hello from TCP client!"); // ТЕСТ 12
     if (err != NET_SUCCESS)
         DbgPrint("[Client] TCP send failed: %d\n", err);
 

@@ -98,11 +98,12 @@ VOID ServerThreadUDP(PVOID Context)
     if (err != NET_SUCCESS)
         goto exit;
 
-    err = net_socket_create(NET_AF_INET4, NET_PROTO_UDP, NET_SOCK_TYPE_UDP, &g_ServerSockUDP);
+    err = net_socket_create(NET_AF_INET6, NET_PROTO_UDP, NET_SOCK_TYPE_UDP, &g_ServerSockUDP);
     if (err != NET_SUCCESS)
         goto exit;
 
-    err = net_address_parse("0.0.0.0", NET_AF_INET4, &addr);
+    //err = net_address_parse("0.0.0.0", NET_AF_INET4, &addr);
+    err = net_address_parse("::", NET_AF_INET6, &addr); // ТЕСТ 10
     net_htons(PORT_UDP, &addr.port);
     if (err != NET_SUCCESS)
         goto close_socket;
