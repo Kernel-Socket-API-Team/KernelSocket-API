@@ -8801,27 +8801,25 @@
     ]
   },
   "packageFolders": {
-    "C:\\work\\c\\KernelSocket-API\\packages": {}
+    "/home/igorjob/programming/c/KernelSocket-API/packages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\work\\c\\KernelSocket-API\\restore-packages\\RestorePackages.csproj",
+      "projectUniqueName": "/home/igorjob/programming/c/KernelSocket-API/restore-packages/RestorePackages.csproj",
       "projectName": "RestorePackages",
-      "projectPath": "C:\\work\\c\\KernelSocket-API\\restore-packages\\RestorePackages.csproj",
-      "packagesPath": "C:\\work\\c\\KernelSocket-API\\packages",
-      "outputPath": "C:\\work\\c\\KernelSocket-API\\restore-packages\\obj\\",
+      "projectPath": "/home/igorjob/programming/c/KernelSocket-API/restore-packages/RestorePackages.csproj",
+      "packagesPath": "/home/igorjob/programming/c/KernelSocket-API/packages",
+      "outputPath": "/home/igorjob/programming/c/KernelSocket-API/restore-packages/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\work\\c\\KernelSocket-API\\NuGet.Config",
-        "C:\\Users\\PC\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        "/home/igorjob/programming/c/KernelSocket-API/NuGet.config",
+        "/home/igorjob/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "native"
       ],
       "sources": {
-        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -8834,13 +8832,7 @@
         "warnAsError": [
           "NU1605"
         ]
-      },
-      "restoreAuditProperties": {
-        "enableAudit": "true",
-        "auditLevel": "low",
-        "auditMode": "direct"
-      },
-      "SdkAnalysisLevel": "10.0.200"
+      }
     },
     "frameworks": {
       "native": {
@@ -8859,7 +8851,7 @@
             "version": "[10.0.26100.6584, )"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.125/RuntimeIdentifierGraph.json"
       }
     }
   }
