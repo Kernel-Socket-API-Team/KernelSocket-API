@@ -1,0 +1,62 @@
+;
+; compileLibraryForWindows.inf
+;
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = System ; TODO: specify appropriate Class
+ClassGuid   = {4d36e97d-e325-11ce-bfc1-08002be10318} ; TODO: specify appropriate ClassGuid
+Provider    = %ManufacturerName%
+CatalogFile = compileLibraryForWindows.cat
+DriverVer = 05/10/2026,16.43.52.756
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 13
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+compileLibraryForWindows.sys = 1,,
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName% = Standard,NTamd64.10.0...16299 ; %13% support introduced in build 16299
+
+[Standard.NTamd64.10.0...16299]
+%compileLibraryForWindows.DeviceDesc% = compileLibraryForWindows_Device, Root\compileLibraryForWindows ; TODO: edit hw-id
+
+[compileLibraryForWindows_Device.NT]
+CopyFiles = File_Copy
+
+[File_Copy]
+compileLibraryForWindows.sys
+
+;-------------- Service installation
+[compileLibraryForWindows_Device.NT.Services]
+AddService = compileLibraryForWindows,%SPSVCINST_ASSOCSERVICE%, compileLibraryForWindows_Service_Inst
+
+; -------------- compileLibraryForWindows driver install sections
+[compileLibraryForWindows_Service_Inst]
+DisplayName    = %compileLibraryForWindows.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %13%\compileLibraryForWindows.sys
+
+[compileLibraryForWindows_Device.NT.Wdf]
+KmdfService = compileLibraryForWindows, compileLibraryForWindows_wdfsect
+
+[compileLibraryForWindows_wdfsect]
+KmdfLibraryVersion = 1.15
+
+[Strings]
+SPSVCINST_ASSOCSERVICE = 0x00000002
+ManufacturerName = "<Your manufacturer name>" ;TODO: Replace with your manufacturer name
+DiskName = "compileLibraryForWindows Installation Disk"
+compileLibraryForWindows.DeviceDesc = "compileLibraryForWindows Device"
+compileLibraryForWindows.SVCDESC = "compileLibraryForWindows Service"

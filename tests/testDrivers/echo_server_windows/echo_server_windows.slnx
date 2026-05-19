@@ -1,0 +1,10 @@
+<Solution>
+  <Configurations>
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="echo_server_windows.vcxproj">
+    <Deploy Solution="*|ARM64" />
+    <Deploy Solution="Release|x64" />
+  </Project>
+</Solution>
